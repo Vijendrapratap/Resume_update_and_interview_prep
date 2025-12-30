@@ -40,13 +40,72 @@ export default function InterviewPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [interimTranscript, setInterimTranscript] = useState('')
 
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
-  const mediaRecorderRef = useRef(null)
-  const audioChunksRef = useRef([])
+  const recognitionRef = useRef(null)
 
   const jobDescription = location.state?.jobDescription || ''
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = true
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = 'en-US'
+
+      recognitionRef.current.onresult = (event) => {
+        let interim = ''
+        let final = ''
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            final += transcript + ' '
+          } else {
+            interim += transcript
+          }
+        }
+
+        if (final) {
+          setResponse(prev => prev + final)
+        }
+        setInterimTranscript(interim)
+      }
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error)
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow microphone permissions.')
+        } else if (event.error !== 'no-speech') {
+          toast.error(`Speech recognition error: ${event.error}`)
+        }
+        setIsRecording(false)
+      }
+
+      recognitionRef.current.onend = () => {
+        // Restart if still supposed to be recording
+        if (isRecording && recognitionRef.current) {
+          try {
+            recognitionRef.current.start()
+          } catch (e) {
+            console.log('Recognition already started')
+          }
+        }
+      }
+    } else {
+      toast.error('Speech recognition is not supported in this browser. Please use Chrome.')
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     initializeInterview()
@@ -90,9 +149,9 @@ export default function InterviewPage() {
         }
       ])
 
-      // Speak the question if in voice mode
+      // Speak the intro and question if in voice mode
       if (mode === 'voice') {
-        speakText(result.first_question.question)
+        speakText(result.intro_message + ' ' + result.first_question.question)
       }
     } catch (error) {
       console.error('Error starting interview:', error)
@@ -103,21 +162,27 @@ export default function InterviewPage() {
   }
 
   const handleSubmitResponse = async () => {
-    if (!response.trim() || submitting) return
+    const finalResponse = response.trim()
+    if (!finalResponse || submitting) return
+
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording()
+    }
 
     setSubmitting(true)
+    setInterimTranscript('')
 
     // Add user message
     setMessages(prev => [...prev, {
       type: 'answer',
-      content: response
+      content: finalResponse
     }])
 
-    const currentResponse = response
     setResponse('')
 
     try {
-      const result = await submitResponse(session.session_id, currentResponse)
+      const result = await submitResponse(session.session_id, finalResponse)
 
       // Add feedback message
       setMessages(prev => [...prev, {
@@ -130,8 +195,11 @@ export default function InterviewPage() {
         setIsComplete(true)
         setMessages(prev => [...prev, {
           type: 'system',
-          content: "Thank you for completing the interview! Your responses have been recorded and analyzed. Click 'View Report' to see your detailed performance report."
+          content: "Great job completing the interview! Click 'View Report' to see your detailed feedback and scores."
         }])
+        if (mode === 'voice') {
+          speakText("Great job completing the interview! You can now view your detailed report.")
+        }
       } else if (result.next_question) {
         setCurrentQuestion(result.next_question)
         setMessages(prev => [...prev, {
@@ -155,48 +223,46 @@ export default function InterviewPage() {
   }
 
   const speakText = async (text) => {
-    setIsSpeaking(true)
-    try {
-      const result = await synthesizeSpeech(text)
-      const audio = new Audio(result.audio_url)
-      audio.onended = () => setIsSpeaking(false)
-      audio.play()
-    } catch (error) {
-      console.error('TTS error:', error)
+    // Use browser's built-in speech synthesis for simplicity
+    if ('speechSynthesis' in window) {
+      setIsSpeaking(true)
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = 0.9
+      utterance.pitch = 1
+      utterance.onend = () => setIsSpeaking(false)
+      utterance.onerror = () => setIsSpeaking(false)
+      window.speechSynthesis.speak(utterance)
+    }
+  }
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
       setIsSpeaking(false)
     }
   }
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorderRef.current = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data)
+  const startRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        setInterimTranscript('')
+        recognitionRef.current.start()
+        setIsRecording(true)
+        toast.success('Listening... Speak your answer')
+      } catch (error) {
+        console.error('Failed to start recognition:', error)
+        toast.error('Failed to start voice recognition')
       }
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        // Here you would transcribe the audio
-        // For now, we'll just show a placeholder
-        toast.info('Voice recording captured. Processing...')
-      }
-
-      mediaRecorderRef.current.start()
-      setIsRecording(true)
-    } catch (error) {
-      console.error('Recording error:', error)
-      toast.error('Failed to start recording. Please check microphone permissions.')
+    } else {
+      toast.error('Speech recognition not available')
     }
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop()
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
       setIsRecording(false)
+      setInterimTranscript('')
     }
   }
 
@@ -219,11 +285,11 @@ export default function InterviewPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-4" />
           <p className="text-lg font-medium text-gray-900">Setting up your interview...</p>
-          <p className="text-gray-500">Preparing personalized questions</p>
+          <p className="text-gray-500 text-sm">Preparing personalized questions</p>
         </div>
       </div>
     )
@@ -232,22 +298,18 @@ export default function InterviewPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
-      >
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mock Interview</h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm">
             Question {currentQuestion?.question_number || 1} of {currentQuestion?.total_questions || 7}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {/* Mode Toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setMode('text')}
+              onClick={() => { setMode('text'); stopRecording(); stopSpeaking(); }}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                 mode === 'text' ? 'bg-white shadow text-primary-600' : 'text-gray-600'
               }`}
@@ -268,98 +330,91 @@ export default function InterviewPage() {
           {!isComplete && (
             <button
               onClick={handleEndInterview}
-              className="btn btn-secondary text-sm"
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg"
             >
-              End Interview
+              End
             </button>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
-        <motion.div
-          className="bg-primary-500 h-2 rounded-full"
-          initial={{ width: 0 }}
-          animate={{
-            width: `${((currentQuestion?.question_number || 1) / (currentQuestion?.total_questions || 7)) * 100}%`
-          }}
-          transition={{ duration: 0.5 }}
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+        <div
+          className="bg-primary-500 h-2 rounded-full transition-all duration-500"
+          style={{ width: `${((currentQuestion?.question_number || 1) / (currentQuestion?.total_questions || 7)) * 100}%` }}
         />
       </div>
 
       {/* Chat Container */}
-      <div className="card h-[500px] flex flex-col">
+      <div className="bg-white rounded-xl border border-gray-200 h-[500px] flex flex-col">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <AnimatePresence>
-            {messages.map((message, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className={`flex ${message.type === 'answer' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.type === 'system' ? (
-                  <div className="max-w-[80%] p-4 bg-primary-50 rounded-xl text-primary-800 text-sm">
-                    {message.content}
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.type === 'answer' ? 'justify-end' : 'justify-start'}`}
+            >
+              {message.type === 'system' ? (
+                <div className="max-w-[85%] p-3 bg-blue-50 rounded-lg text-blue-800 text-sm">
+                  {message.content}
+                </div>
+              ) : message.type === 'question' ? (
+                <div className="flex items-start gap-2 max-w-[85%]">
+                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-primary-600" />
                   </div>
-                ) : message.type === 'question' ? (
-                  <div className="flex items-start gap-3 max-w-[80%]">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-5 h-5 text-primary-600" />
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-primary-600">Q{message.questionNumber}</span>
+                      <span className="text-xs text-gray-500">{message.topic}</span>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
-                          Q{message.questionNumber}
-                        </span>
-                        <span className="text-xs text-gray-500">{message.topic}</span>
-                      </div>
-                      <p className="text-gray-800">{message.content}</p>
-                      {mode === 'voice' && (
-                        <button
-                          onClick={() => speakText(message.content)}
-                          className="mt-2 text-primary-600 hover:text-primary-700 text-sm flex items-center"
-                          disabled={isSpeaking}
-                        >
-                          {isSpeaking ? (
-                            <Volume2 className="w-4 h-4 mr-1 animate-pulse" />
-                          ) : (
-                            <PlayCircle className="w-4 h-4 mr-1" />
-                          )}
-                          {isSpeaking ? 'Speaking...' : 'Listen'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : message.type === 'answer' ? (
-                  <div className="flex items-start gap-3 max-w-[80%]">
-                    <div className="bg-primary-600 text-white rounded-xl p-4">
-                      <p>{message.content}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-gray-600" />
-                    </div>
-                  </div>
-                ) : message.type === 'feedback' ? (
-                  <div className="max-w-[80%] p-4 bg-green-50 border border-green-200 rounded-xl">
-                    <p className="text-sm text-green-800 mb-2">{message.content}</p>
-                    {message.scores && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {Object.entries(message.scores).map(([key, value]) => (
-                          <span key={key} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                            {key.replace('_', ' ')}: {value}/10
-                          </span>
-                        ))}
-                      </div>
+                    <p className="text-gray-800 text-sm">{message.content}</p>
+                    {mode === 'voice' && (
+                      <button
+                        onClick={() => isSpeaking ? stopSpeaking() : speakText(message.content)}
+                        className="mt-2 text-primary-600 hover:text-primary-700 text-xs flex items-center"
+                      >
+                        {isSpeaking ? (
+                          <>
+                            <VolumeX className="w-3 h-3 mr-1" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3 h-3 mr-1" />
+                            Listen
+                          </>
+                        )}
+                      </button>
                     )}
                   </div>
-                ) : null}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                </div>
+              ) : message.type === 'answer' ? (
+                <div className="flex items-start gap-2 max-w-[85%]">
+                  <div className="bg-primary-600 text-white rounded-lg p-3">
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-gray-600" />
+                  </div>
+                </div>
+              ) : message.type === 'feedback' ? (
+                <div className="max-w-[85%] p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">{message.content}</p>
+                  {message.scores && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {Object.entries(message.scores).slice(0, 4).map(([key, value]) => (
+                        <span key={key} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                          {key.replace(/_/g, ' ')}: {value}/10
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ))}
           <div ref={messagesEndRef} />
         </div>
 
@@ -368,7 +423,7 @@ export default function InterviewPage() {
           {isComplete ? (
             <button
               onClick={handleEndInterview}
-              className="w-full btn btn-primary py-3"
+              className="w-full flex items-center justify-center px-4 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700"
             >
               View Report
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -381,49 +436,68 @@ export default function InterviewPage() {
                 onChange={(e) => setResponse(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your answer..."
-                className="input flex-1 resize-none h-24"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none h-20 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                 disabled={submitting}
               />
               <button
                 onClick={handleSubmitResponse}
                 disabled={!response.trim() || submitting}
-                className="btn btn-primary self-end px-6"
+                className="self-end px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                  </>
+                  <Send className="w-5 h-5" />
                 )}
               </button>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-4">
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-                  isRecording
-                    ? 'bg-danger-500 hover:bg-danger-600 animate-pulse'
-                    : 'bg-primary-500 hover:bg-primary-600'
-                }`}
-              >
-                {isRecording ? (
-                  <StopCircle className="w-10 h-10 text-white" />
-                ) : (
-                  <Mic className="w-10 h-10 text-white" />
-                )}
-              </button>
-              <p className="text-sm text-gray-500">
-                {isRecording ? 'Recording... Click to stop' : 'Click to start recording'}
-              </p>
-              {isRecording && (
-                <div className="flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="waveform-bar" />
-                  ))}
+            <div className="space-y-3">
+              {/* Voice transcription display */}
+              {(response || interimTranscript) && (
+                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 min-h-[60px]">
+                  {response}
+                  <span className="text-gray-400">{interimTranscript}</span>
                 </div>
               )}
+
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                    isRecording
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                      : 'bg-primary-500 hover:bg-primary-600'
+                  }`}
+                >
+                  {isRecording ? (
+                    <MicOff className="w-8 h-8 text-white" />
+                  ) : (
+                    <Mic className="w-8 h-8 text-white" />
+                  )}
+                </button>
+
+                {response.trim() && (
+                  <button
+                    onClick={handleSubmitResponse}
+                    disabled={submitting}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Submit
+                        <Send className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              <p className="text-center text-xs text-gray-500">
+                {isRecording ? 'Listening... Click mic to stop' : 'Click mic to start speaking'}
+              </p>
             </div>
           )}
         </div>
