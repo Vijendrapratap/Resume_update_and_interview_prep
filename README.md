@@ -5,6 +5,7 @@ An AI-powered web application for comprehensive resume analysis and mock intervi
 ## Features
 
 ### Resume Analysis
+- **Multi-Format Support** - Upload resumes in PDF, DOCX, DOC, or TXT formats
 - **AI-Powered Scoring** - Get comprehensive scores for content, format, and keywords
 - **ATS Compatibility Check** - Ensure your resume passes Applicant Tracking Systems
 - **Keyword Analysis** - Identify missing and present keywords

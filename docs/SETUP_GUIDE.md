@@ -218,7 +218,24 @@ Check that frontend is running on port 3000 (configured in backend CORS)
 pip install pdfplumber PyPDF2
 ```
 
-**5. TTS not working**
+**5. DOC file parsing issues**
+The parser supports both `.docx` (modern) and `.doc` (legacy) Word files.
+
+For best `.doc` file support, install antiword:
+```bash
+# Ubuntu/Debian
+sudo apt-get install antiword
+
+# macOS
+brew install antiword
+
+# Or use catdoc as alternative
+sudo apt-get install catdoc
+```
+
+If antiword is not available, the parser will use a Python-based fallback (`olefile`).
+
+**6. TTS not working**
 ```bash
 pip install gTTS edge-tts
 ```

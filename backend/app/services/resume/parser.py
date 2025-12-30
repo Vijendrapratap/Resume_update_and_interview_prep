@@ -49,8 +49,10 @@ class ResumeParser:
         # Extract text based on file type
         if file_ext == ".pdf":
             text = await self._parse_pdf(file_path)
-        elif file_ext in [".docx", ".doc"]:
+        elif file_ext == ".docx":
             text = await self._parse_docx(file_path)
+        elif file_ext == ".doc":
+            text = await self._parse_doc(file_path)
         elif file_ext == ".txt":
             text = await self._parse_txt(file_path)
         else:
@@ -129,6 +131,107 @@ class ResumeParser:
         except ImportError:
             logger.error("python-docx not installed")
             raise ImportError("DOCX parsing requires python-docx")
+
+    async def _parse_doc(self, file_path: Path) -> str:
+        """Extract text from legacy DOC file (pre-2007 Word format)"""
+        # Try antiword first (most reliable for .doc)
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['antiword', str(file_path)],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                return result.stdout
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+        # Try catdoc as fallback
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['catdoc', str(file_path)],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                return result.stdout
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+        # Try using olefile for basic extraction
+        try:
+            import olefile
+
+            if not olefile.isOleFile(file_path):
+                raise ValueError("Not a valid DOC file")
+
+            ole = olefile.OleFileIO(file_path)
+
+            # Try to extract from WordDocument stream
+            if ole.exists('WordDocument'):
+                # For complex .doc files, we extract what text we can
+                text_parts = []
+
+                # Try to read any text streams
+                for stream in ole.listdir():
+                    stream_path = '/'.join(stream)
+                    try:
+                        if any(name in stream_path.lower() for name in ['text', 'content', 'document']):
+                            data = ole.openstream(stream).read()
+                            # Try to decode as text
+                            try:
+                                text = data.decode('utf-16-le', errors='ignore')
+                                # Filter printable characters
+                                text = ''.join(c for c in text if c.isprintable() or c in '\n\r\t')
+                                if text.strip():
+                                    text_parts.append(text)
+                            except:
+                                pass
+                    except:
+                        continue
+
+                ole.close()
+
+                if text_parts:
+                    return '\n'.join(text_parts)
+
+            ole.close()
+            raise ValueError("Could not extract text from DOC file")
+
+        except ImportError:
+            pass
+
+        # Last resort: try to read as binary and extract printable text
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+
+            # Try UTF-16 LE decoding (common in .doc files)
+            try:
+                text = content.decode('utf-16-le', errors='ignore')
+            except:
+                text = content.decode('latin-1', errors='ignore')
+
+            # Extract printable text sequences
+            import re
+            # Find sequences of printable characters
+            printable_parts = re.findall(r'[\x20-\x7E\n\r\t]{10,}', text)
+
+            if printable_parts:
+                return '\n'.join(printable_parts)
+
+            raise ValueError("Could not extract readable text from DOC file")
+
+        except Exception as e:
+            logger.error(f"Failed to parse DOC file: {e}")
+            raise ValueError(
+                f"Could not parse DOC file. For best results, install 'antiword' "
+                f"(apt-get install antiword) or convert to DOCX format. Error: {e}"
+            )
 
     async def _parse_txt(self, file_path: Path) -> str:
         """Read plain text file"""

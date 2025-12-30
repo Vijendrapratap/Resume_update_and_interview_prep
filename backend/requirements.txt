@@ -14,6 +14,7 @@ httpx==0.26.0
 pdfplumber==0.10.4
 PyPDF2==3.0.1
 python-docx==1.1.0
+olefile==0.47
 
 # Database (optional)
 sqlalchemy==2.0.25
