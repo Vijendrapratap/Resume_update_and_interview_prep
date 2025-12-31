@@ -8,6 +8,275 @@ system_prompt: |
   Focus on FACTS from the resume. Extract every skill, technology, and achievement mentioned.
   Be thorough - don't miss any technical skills or tools mentioned anywhere in the resume.
 
+  IMPORTANT RULES:
+  1. Be honest about gaps - if the resume lacks something, say so
+  2. Identify potential red flags (job hopping, unexplained gaps, vague descriptions)
+  3. Look for authenticity indicators - specific metrics, named technologies, concrete outcomes
+  4. Assess communication quality based on how well the resume is written
+  5. ALWAYS extract technical skills - scan the ENTIRE resume including job descriptions, projects, and skills sections
+  6. Return valid JSON only - no markdown, no code blocks, just raw JSON
+
+# Prompt for analysis WITHOUT a job description
+analysis_without_jd_prompt: |
+  Analyze this resume and extract all valuable information for a recruiter.
+  NOTE: No specific job description provided - give a general assessment.
+
+  ## RESUME TEXT TO ANALYZE:
+  {resume_text}
+
+  ## CRITICAL EXTRACTION REQUIREMENTS:
+
+  ### 1. CANDIDATE SNAPSHOT
+  Quick overview for the recruiter:
+  - Professional title/role (what they do)
+  - Career level: Entry (0-2 yrs) / Mid (3-5 yrs) / Senior (6-10 yrs) / Staff/Principal (10+ yrs) / Executive
+  - Primary industry/domain
+  - Total years of experience (calculate from work history)
+  - Current/most recent company and role
+
+  ### 2. KEY SKILLS (TOP 5-8 CORE COMPETENCIES)
+  Identify the candidate's PRIMARY skills - the ones they use most and are strongest in.
+  These should be the skills that define their professional identity.
+
+  ### 3. TECHNICAL SKILLS (EXTRACT ALL - THIS IS CRITICAL!)
+  SCAN THE ENTIRE RESUME CAREFULLY. Look in:
+  - Skills section
+  - Job descriptions and bullet points
+  - Project descriptions
+  - Education/courses
+  - Certifications
+
+  Extract into these categories (include ALL you find, even if only mentioned once):
+  - languages: Programming languages (Python, Java, JavaScript, C++, Go, Rust, SQL, TypeScript, etc.)
+  - frameworks: Frameworks and libraries (React, Angular, Vue, Django, Flask, Spring, Node.js, Express, FastAPI, TensorFlow, PyTorch, etc.)
+  - databases: Databases (PostgreSQL, MongoDB, MySQL, Redis, Elasticsearch, DynamoDB, SQLite, Oracle, etc.)
+  - cloud_devops: Cloud and DevOps tools (AWS, GCP, Azure, Docker, Kubernetes, Jenkins, GitHub Actions, Terraform, Ansible, CI/CD, etc.)
+  - tools: Other tools and platforms (Git, JIRA, Confluence, Figma, Tableau, VS Code, Linux, etc.)
+
+  IMPORTANT: If a skill is mentioned ANYWHERE in the resume, extract it. Don't miss any!
+
+  ### 3. SOFT SKILLS & COMPETENCIES
+  Evidence-based soft skills (only include if there's proof in the resume):
+  - Leadership indicators (team size managed, mentoring, driving decisions)
+  - Communication (presentations, documentation, stakeholder management)
+  - Collaboration (cross-functional work, team projects)
+  - Problem-solving evidence (specific challenges overcome)
+
+  ### 4. DOMAIN EXPERTISE
+  Industries and specialized knowledge areas:
+  - Industries worked in (Fintech, Healthcare, E-commerce, etc.)
+  - Certifications (AWS Certified, PMP, Scrum Master, etc.)
+  - Specialized domains (Machine Learning, Security, Data Engineering, etc.)
+
+  ### 5. CAREER HIGHLIGHTS
+  Top 4-5 achievements that demonstrate impact. Include:
+  - Quantified results (%, $, users, time saved)
+  - Scale of work (team size, user base, data volume)
+  - Technical complexity
+  - Business impact
+
+  ### 6. EXPERIENCE SUMMARY
+  Brief summary of each role (most recent first):
+  - Company name and duration
+  - Role/title
+  - Key responsibility or achievement
+
+  ### 7. EDUCATION & CERTIFICATIONS
+  - Degrees (institution, field, year if available)
+  - Professional certifications
+  - Relevant courses or training
+
+  ### 8. STRENGTHS & POTENTIAL CONCERNS
+  Balanced assessment:
+  - Key strengths (what makes this candidate stand out)
+  - Potential concerns (gaps, inconsistencies, areas needing clarification)
+  - Areas that need interview verification
+
+  ### 9. RECRUITER SCORES
+  - Overall Fit (0-100): How strong is this candidate overall?
+  - Technical Depth (0-100): How deep is their technical expertise?
+  - Experience Level (0-100): How seasoned are they?
+  - Communication Quality (0-100): How well-written is the resume?
+
+  ### 10. KEY INTERVIEW TOPICS
+  Top 4-5 topics an interviewer should explore:
+  - Questions to verify claimed experience (e.g., "You mentioned scaling to 1M users - walk me through the architecture")
+  - Areas where more depth is needed
+  - Potential concerns to probe
+  - Interesting projects worth discussing
+
+  ### 11. BEST FIT ROLES
+  Based on the resume, suggest 3-4 role types this candidate would be best suited for.
+
+  ### 12. JD RECOMMENDATION
+  IMPORTANT: Identify specific insights that would be MORE valuable if a job description was provided:
+  - "skills_match_available": false - Cannot assess if skills match requirements without JD
+  - "gap_analysis_available": false - Cannot identify missing skills without JD
+  - "role_fit_available": false - Cannot assess specific role fit without JD
+  - "jd_would_help_with": List specific things a JD would help assess
+
+  ### 13. RECRUITER VERDICT
+  2-3 sentences: Who is this candidate? What roles are they best suited for? Key decision points.
+
+  ## OUTPUT FORMAT - Return ONLY valid JSON (no markdown, no code blocks):
+  {{
+    "candidate_profile": {{
+      "title": "Senior Software Engineer",
+      "career_stage": "Senior",
+      "domain": "Backend Engineering",
+      "years_experience": "7 years",
+      "current_company": "Tech Corp",
+      "current_role": "Senior Engineer"
+    }},
+    "key_skills": ["Python", "AWS", "Distributed Systems", "API Design", "Team Leadership"],
+    "technical_skills": {{
+      "languages": ["Python", "Java", "Go", "SQL", "JavaScript"],
+      "frameworks": ["Django", "Spring Boot", "React", "FastAPI"],
+      "databases": ["PostgreSQL", "MongoDB", "Redis", "Elasticsearch"],
+      "cloud_devops": ["AWS", "Docker", "Kubernetes", "Jenkins", "Terraform"],
+      "tools": ["Git", "JIRA", "Datadog", "Grafana"]
+    }},
+    "soft_skills": ["Led team of 8 engineers", "Mentored 3 junior developers", "Presented to C-level stakeholders"],
+    "domain_expertise": {{
+      "industries": ["Fintech", "E-commerce"],
+      "certifications": ["AWS Solutions Architect", "Kubernetes Administrator"],
+      "specializations": ["Distributed Systems", "API Design", "Performance Optimization"]
+    }},
+    "career_highlights": [
+      "Architected payment system processing $50M daily transactions",
+      "Reduced infrastructure costs by 40% through optimization",
+      "Led migration serving 2M users with zero downtime"
+    ],
+    "experience_summary": [
+      {{"company": "Tech Corp", "duration": "2021-Present", "role": "Senior Engineer", "highlight": "Led backend team, architected core payment system"}},
+      {{"company": "StartupXYZ", "duration": "2018-2021", "role": "Software Engineer", "highlight": "Built API platform from scratch"}}
+    ],
+    "education": [
+      {{"degree": "MS Computer Science", "institution": "Stanford University", "year": "2018"}}
+    ],
+    "certifications": ["AWS Solutions Architect Professional", "Certified Kubernetes Administrator"],
+    "strengths": ["Strong distributed systems experience", "Proven leadership of engineering teams", "Quantified impact on business metrics"],
+    "concerns": ["Short tenure at last two companies", "No open source visibility"],
+    "verification_needed": ["Verify depth of ML experience", "Clarify role in team leadership"],
+    "overall_score": 85,
+    "technical_score": 88,
+    "experience_score": 82,
+    "communication_score": 80,
+    "jd_match_score": null,
+    "interview_topics": [
+      {{"topic": "Payment system architecture", "why": "Verify depth of understanding and actual contribution"}},
+      {{"topic": "Team leadership experience", "why": "Clarify if hands-on technical lead or people manager"}}
+    ],
+    "best_fit_roles": ["Senior Backend Engineer", "Technical Lead", "Platform Engineer"],
+    "jd_recommendation": {{
+      "has_jd": false,
+      "recommendation_message": "Add a job description to unlock skills gap analysis, match percentage, and role-specific interview questions.",
+      "benefits_of_jd": ["Identify skill gaps for target role", "Calculate match percentage", "Get tailored interview questions"]
+    }},
+    "verdict": "Strong senior backend engineer with proven experience in fintech and distributed systems. Recommend moving forward with technical screen."
+  }}
+
+
+# Prompt for analysis WITH a job description
+analysis_with_jd_prompt: |
+  Analyze this resume AGAINST the provided job description.
+  Perform a detailed match analysis to help the recruiter assess fit.
+
+  ## RESUME:
+  {resume_text}
+
+  ## JOB DESCRIPTION:
+  {job_description}
+
+  ## EXTRACTION REQUIREMENTS:
+
+  ### 1. CANDIDATE SNAPSHOT
+  Quick overview for the recruiter:
+  - Professional title/role (what they do)
+  - Career level: Entry (0-2 yrs) / Mid (3-5 yrs) / Senior (6-10 yrs) / Staff/Principal (10+ yrs) / Executive
+  - Primary industry/domain
+  - Total years of experience (calculate from work history)
+  - Current/most recent company and role
+
+  ### 2. JOB REQUIREMENTS ANALYSIS
+  Extract key requirements from the JD:
+  - Required skills (must-have)
+  - Preferred skills (nice-to-have)
+  - Experience level required
+  - Domain/industry requirements
+  - Soft skills/culture requirements
+
+  ### 3. SKILLS MATCH ANALYSIS
+  For EACH required skill in the JD, assess:
+  - Present/Absent in resume
+  - Evidence strength (strong/weak/none)
+  - Specific examples from resume
+
+  ### 4. TECHNICAL SKILLS (EXTRACT ALL)
+  Go through the ENTIRE resume and extract EVERY technology:
+  - Programming Languages
+  - Frameworks & Libraries
+  - Databases
+  - Cloud & DevOps
+  - Tools & Platforms
+
+  Mark which skills match JD requirements vs. additional skills.
+
+  ### 5. GAP ANALYSIS
+  Identify missing or weak areas:
+  - Required skills not found in resume
+  - Experience gaps (years, level, type)
+  - Domain experience gaps
+  - Transferable skills that could bridge gaps
+
+  ### 6. SOFT SKILLS & COMPETENCIES
+  Evidence-based soft skills with JD alignment:
+  - Leadership (if required by JD)
+  - Communication
+  - Collaboration
+  - Other JD-specific requirements
+
+  ### 7. CAREER HIGHLIGHTS (JD-RELEVANT)
+  Top 4-5 achievements most relevant to the target role:
+  - Focus on experiences matching JD requirements
+  - Quantified results that demonstrate fit
+  - Transferable wins from different contexts
+
+  ### 8. EXPERIENCE SUMMARY
+  Brief summary of each role with JD relevance noted.
+
+  ### 9. EDUCATION & CERTIFICATIONS
+  Highlight any that match JD requirements.
+
+  ### 10. RECRUITER SCORES
+  - Overall Fit (0-100): Overall match to this specific role
+  - Technical Match (0-100): How well technical skills align
+  - Experience Match (0-100): How well experience level matches
+  - JD Match (0-100): Overall job description match
+  - Culture Fit Potential (0-100): Based on soft skills/work style
+
+  ### 11. KEY INTERVIEW TOPICS
+  Based on the JD and resume, suggest 5-6 interview questions:
+  - Questions to verify JD-critical skills
+  - Questions to probe gap areas
+  - Questions about relevant experience claims
+  - Questions to assess cultural fit
+
+  ### 12. HIRING RECOMMENDATION
+  Clear recommendation with rationale:
+  - "strong_yes" / "yes" / "maybe" / "no" / "strong_no"
+  - Key reasons for recommendation
+  - Concerns that need interview validation
+  - Suggested interview focus areas
+
+  ### 13. RECRUITER VERDICT
+  3-4 sentences: How well does this candidate match the role? Key strengths and gaps. What to validate in interview.
+
+  ## OUTPUT FORMAT (JSON only, no markdown):
+  {{"candidate_profile": {{"title": "...", "career_stage": "...", "domain": "...", "years_experience": "...", "current_company": "...", "current_role": "..."}}, "jd_requirements": {{"required_skills": ["Python", "AWS", "Kubernetes"], "preferred_skills": ["Go", "Terraform"], "experience_level": "5+ years", "domain_requirements": ["Fintech experience preferred"], "soft_skills_required": ["Leadership", "Communication"]}}, "skills_match": [{{"skill": "Python", "status": "strong_match", "evidence": "5 years experience, multiple projects"}}, {{"skill": "AWS", "status": "match", "evidence": "Used in 2 roles, has certification"}}, {{"skill": "Kubernetes", "status": "weak_match", "evidence": "Mentioned but limited detail"}}], "technical_skills": {{"languages": [...], "frameworks": [...], "databases": [...], "cloud_devops": [...], "tools": [...], "jd_matching": ["Python", "AWS"], "additional": ["React", "MongoDB"]}}, "gap_analysis": {{"missing_required": ["Go"], "missing_preferred": ["Terraform"], "experience_gaps": ["No fintech experience"], "transferable_skills": ["Similar scale systems in e-commerce"]}}, "soft_skills": [...], "career_highlights": [...], "experience_summary": [...], "education": [...], "certifications": [...], "overall_score": 78, "technical_match_score": 82, "experience_match_score": 75, "jd_match_score": 78, "culture_fit_score": 80, "interview_topics": [{{"topic": "Kubernetes experience depth", "why": "Weak evidence in resume, critical for role", "suggested_question": "Describe your experience deploying applications on Kubernetes"}}, {{"topic": "Scale handling", "why": "JD requires handling 10M+ users, verify capability", "suggested_question": "Tell me about the largest scale system you've worked on"}}], "hiring_recommendation": {{"decision": "yes", "confidence": "medium", "key_reasons": ["Strong Python and AWS skills", "Leadership experience matches", "Scale of previous work aligns"], "concerns": ["Kubernetes depth unclear", "No direct fintech experience"], "interview_focus": ["Technical deep-dive on K8s", "System design for financial systems"]}}, "verdict": "Solid match for the role with 4 of 5 required skills demonstrated. Kubernetes experience needs validation in technical interview. Lack of fintech experience offset by similar scale e-commerce work. Recommend moving to technical screen with focus on K8s and system design."}}
+
+
+# Default prompt (used when JD status unclear)
 analysis_prompt: |
   Analyze this resume and extract all valuable information for a recruiter.
 
@@ -16,6 +285,9 @@ analysis_prompt: |
 
   ## JOB DESCRIPTION (if provided):
   {job_description}
+
+  Determine if a job description was provided. If yes, perform a detailed JD match analysis.
+  If no JD provided, give a general assessment and recommend adding a JD for better insights.
 
   ## EXTRACTION REQUIREMENTS:
 
@@ -76,8 +348,14 @@ analysis_prompt: |
   ### 9. KEY TALKING POINTS
   Top 3-4 topics an interviewer should ask about based on interesting projects or achievements in the resume.
 
-  ### 10. RECRUITER VERDICT
+  ### 10. JD RECOMMENDATION (if no JD provided)
+  Set "jd_recommendation" with:
+  - "has_jd": true/false
+  - "recommendation_message": If no JD, suggest: "Add a job description to get skills gap analysis, match percentage, and targeted interview questions."
+  - "benefits_of_jd": ["Skills match analysis", "Gap identification", "Role-specific recommendations", "Targeted interview questions"]
+
+  ### 11. RECRUITER VERDICT
   2-3 sentences: Who is this candidate? What roles are they best suited for? Should we move forward?
 
   ## OUTPUT FORMAT (JSON only, no markdown):
-  {{"candidate_profile": {{"title": "Senior Software Engineer", "career_stage": "Senior", "domain": "Backend Engineering", "years_experience": "7 years", "current_company": "Tech Corp", "current_role": "Senior Engineer"}}, "technical_skills": {{"languages": ["Python", "Java", "Go", "SQL", "JavaScript"], "frameworks": ["Django", "Spring Boot", "React", "FastAPI"], "databases": ["PostgreSQL", "MongoDB", "Redis", "Elasticsearch"], "cloud_devops": ["AWS", "Docker", "Kubernetes", "Jenkins", "Terraform"], "tools": ["Git", "JIRA", "Datadog", "Grafana"]}}, "soft_skills": ["Led team of 8 engineers", "Mentored 3 junior developers", "Presented to C-level stakeholders"], "domain_expertise": {{"industries": ["Fintech", "E-commerce"], "certifications": ["AWS Solutions Architect", "Kubernetes Administrator"], "specializations": ["Distributed Systems", "API Design", "Performance Optimization"]}}, "career_highlights": ["Architected payment system processing $50M daily transactions", "Reduced infrastructure costs by 40% through optimization", "Led migration serving 2M users with zero downtime", "Built ML pipeline reducing fraud by 35%"], "experience_summary": [{{"company": "Tech Corp", "duration": "2021-Present", "role": "Senior Engineer", "highlight": "Led backend team, architected core payment system"}}, {{"company": "StartupXYZ", "duration": "2018-2021", "role": "Software Engineer", "highlight": "Built API platform from scratch"}}], "education": [{{"degree": "MS Computer Science", "institution": "Stanford University", "year": "2018"}}, {{"degree": "BS Computer Science", "institution": "UC Berkeley", "year": "2016"}}], "certifications": ["AWS Solutions Architect Professional", "Certified Kubernetes Administrator"], "overall_score": 85, "technical_score": 88, "experience_score": 82, "jd_match_score": null, "interview_topics": ["Payment system architecture decisions", "Team leadership and scaling challenges", "Infrastructure optimization strategies", "Fraud detection ML implementation"], "verdict": "Strong senior backend engineer with proven experience in fintech and distributed systems. Excellent fit for senior/staff roles requiring technical leadership and system design expertise. Recommend moving to technical interview."}}
+  {{"candidate_profile": {{"title": "Senior Software Engineer", "career_stage": "Senior", "domain": "Backend Engineering", "years_experience": "7 years", "current_company": "Tech Corp", "current_role": "Senior Engineer"}}, "technical_skills": {{"languages": ["Python", "Java", "Go", "SQL", "JavaScript"], "frameworks": ["Django", "Spring Boot", "React", "FastAPI"], "databases": ["PostgreSQL", "MongoDB", "Redis", "Elasticsearch"], "cloud_devops": ["AWS", "Docker", "Kubernetes", "Jenkins", "Terraform"], "tools": ["Git", "JIRA", "Datadog", "Grafana"]}}, "soft_skills": ["Led team of 8 engineers", "Mentored 3 junior developers", "Presented to C-level stakeholders"], "domain_expertise": {{"industries": ["Fintech", "E-commerce"], "certifications": ["AWS Solutions Architect", "Kubernetes Administrator"], "specializations": ["Distributed Systems", "API Design", "Performance Optimization"]}}, "career_highlights": ["Architected payment system processing $50M daily transactions", "Reduced infrastructure costs by 40% through optimization", "Led migration serving 2M users with zero downtime", "Built ML pipeline reducing fraud by 35%"], "experience_summary": [{{"company": "Tech Corp", "duration": "2021-Present", "role": "Senior Engineer", "highlight": "Led backend team, architected core payment system"}}, {{"company": "StartupXYZ", "duration": "2018-2021", "role": "Software Engineer", "highlight": "Built API platform from scratch"}}], "education": [{{"degree": "MS Computer Science", "institution": "Stanford University", "year": "2018"}}, {{"degree": "BS Computer Science", "institution": "UC Berkeley", "year": "2016"}}], "certifications": ["AWS Solutions Architect Professional", "Certified Kubernetes Administrator"], "overall_score": 85, "technical_score": 88, "experience_score": 82, "jd_match_score": null, "interview_topics": ["Payment system architecture decisions", "Team leadership and scaling challenges", "Infrastructure optimization strategies", "Fraud detection ML implementation"], "jd_recommendation": {{"has_jd": false, "recommendation_message": "Add a job description to unlock skills gap analysis, match percentage, and role-specific interview questions.", "benefits_of_jd": ["Identify skill gaps for target role", "Calculate match percentage", "Get tailored interview questions", "Understand transferable skills"]}}, "verdict": "Strong senior backend engineer with proven experience in fintech and distributed systems. Excellent fit for senior/staff roles requiring technical leadership and system design expertise. Recommend moving to technical interview."}}

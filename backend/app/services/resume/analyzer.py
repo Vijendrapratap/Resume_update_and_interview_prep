@@ -44,15 +44,33 @@ class ResumeAnalyzer:
         Returns:
             Dict with analysis results
         """
-        # Build prompt
+        # Build prompt - use different prompts based on JD presence
         system_prompt = self.prompts.get("system_prompt", "")
-        analysis_prompt = self.prompts.get("analysis_prompt", "")
 
-        # Format prompt with resume and JD
-        prompt = analysis_prompt.format(
-            resume_text=resume_text,
-            job_description=job_description or "No job description provided. Provide general analysis."
-        )
+        # Choose the appropriate prompt based on whether JD is provided
+        if job_description and job_description.strip():
+            # Use JD-specific analysis prompt
+            analysis_prompt = self.prompts.get("analysis_with_jd_prompt", "")
+            if not analysis_prompt:
+                # Fallback to default prompt
+                analysis_prompt = self.prompts.get("analysis_prompt", "")
+
+            prompt = analysis_prompt.format(
+                resume_text=resume_text,
+                job_description=job_description
+            )
+        else:
+            # Use general analysis prompt (no JD)
+            analysis_prompt = self.prompts.get("analysis_without_jd_prompt", "")
+            if not analysis_prompt:
+                # Fallback to default prompt
+                analysis_prompt = self.prompts.get("analysis_prompt", "")
+                prompt = analysis_prompt.format(
+                    resume_text=resume_text,
+                    job_description="No job description provided. Provide general analysis."
+                )
+            else:
+                prompt = analysis_prompt.format(resume_text=resume_text)
 
         try:
             # Get LLM analysis
@@ -63,7 +81,7 @@ class ResumeAnalyzer:
             )
 
             # Ensure required fields exist
-            result = self._validate_result(result)
+            result = self._validate_result(result, has_jd=bool(job_description and job_description.strip()))
 
             return result
 
@@ -206,24 +224,52 @@ class ResumeAnalyzer:
             logger.error(f"Getting suggestions failed: {str(e)}")
             raise
 
-    def _validate_result(self, result: Dict) -> Dict:
+    def _validate_result(self, result: Dict, has_jd: bool = False) -> Dict:
         """Ensure result has all required fields with defaults"""
+        # Common defaults for all analyses
         defaults = {
             "overall_score": 0,
-            "ats_score": 0,
-            "content_score": 0,
-            "format_score": 0,
+            "technical_score": 0,
+            "experience_score": 0,
             "jd_match_score": None,
-            "sections": {},
-            "keywords": {
-                "found_keywords": {},
-                "missing_keywords": [],
-                "keyword_density": 0
-            },
-            "improvements": [],
-            "rewrite_examples": [],
-            "detailed_feedback": ""
+            "candidate_profile": {},
+            "technical_skills": {},
+            "soft_skills": [],
+            "domain_expertise": {},
+            "career_highlights": [],
+            "experience_summary": [],
+            "education": [],
+            "certifications": [],
+            "interview_topics": [],
+            "verdict": ""
         }
+
+        # Add JD-specific fields if JD was provided
+        if has_jd:
+            defaults.update({
+                "jd_requirements": {},
+                "skills_match": [],
+                "gap_analysis": {},
+                "hiring_recommendation": {}
+            })
+        else:
+            # Add non-JD specific fields
+            defaults.update({
+                "strengths": [],
+                "concerns": [],
+                "verification_needed": [],
+                "best_fit_roles": [],
+                "jd_recommendation": {
+                    "has_jd": False,
+                    "recommendation_message": "Add a job description to unlock skills gap analysis, match percentage, and role-specific interview questions.",
+                    "benefits_of_jd": [
+                        "Identify skill gaps for target role",
+                        "Calculate match percentage",
+                        "Get tailored interview questions",
+                        "Understand transferable skills"
+                    ]
+                }
+            })
 
         for key, default in defaults.items():
             if key not in result:

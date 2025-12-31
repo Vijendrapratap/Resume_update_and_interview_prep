@@ -198,21 +198,35 @@ class InterviewEngine:
                 temperature=0.3  # Lower temperature for consistent evaluation
             )
 
-            # Validate scores
+            # Validate scores - updated to include new dimensions
             scores = result.get("scores", {})
             validated_scores = {}
-            for key in ["content_relevance", "communication", "technical_accuracy",
-                        "confidence", "depth", "star_adherence"]:
+            score_keys = ["content", "communication", "analytical", "technical_depth",
+                          "star_method", "authenticity"]
+            for key in score_keys:
                 score = scores.get(key, 5)
-                validated_scores[key] = min(10, max(0, float(score)))
+                try:
+                    validated_scores[key] = min(10, max(0, float(score)))
+                except (ValueError, TypeError):
+                    validated_scores[key] = 5
+
+            # Calculate overall if not provided
+            if validated_scores:
+                default_overall = sum(validated_scores.values()) / len(validated_scores)
+            else:
+                default_overall = 5
 
             return {
                 "scores": validated_scores,
-                "overall_score": result.get("overall_score", sum(validated_scores.values()) / len(validated_scores)),
+                "overall_score": result.get("overall_score", default_overall),
                 "strengths": result.get("strengths", []),
-                "weaknesses": result.get("weaknesses", []),
+                "weaknesses": result.get("weaknesses", result.get("improvements", [])),
                 "missing_elements": result.get("missing_elements", []),
                 "feedback": result.get("feedback", "Thank you for your response."),
+                "communication_assessment": result.get("communication_assessment", ""),
+                "analytical_assessment": result.get("analytical_assessment", ""),
+                "verification_notes": result.get("verification_notes", ""),
+                "red_flags": result.get("red_flags", []),
                 "ideal_response_elements": result.get("ideal_response_elements", []),
                 "follow_up_recommended": result.get("follow_up_recommended", False),
                 "follow_up_question": result.get("follow_up_question", "")
@@ -223,16 +237,21 @@ class InterviewEngine:
             # Return default evaluation
             return {
                 "scores": {
-                    "content_relevance": 5,
+                    "content": 5,
                     "communication": 5,
-                    "technical_accuracy": 5,
-                    "confidence": 5,
-                    "depth": 5
+                    "analytical": 5,
+                    "technical_depth": 5,
+                    "star_method": 5,
+                    "authenticity": 5
                 },
                 "overall_score": 5,
                 "strengths": ["Response provided"],
                 "weaknesses": ["Evaluation unavailable"],
                 "feedback": "Thank you for your response.",
+                "communication_assessment": "",
+                "analytical_assessment": "",
+                "verification_notes": "",
+                "red_flags": [],
                 "follow_up_recommended": False
             }
 

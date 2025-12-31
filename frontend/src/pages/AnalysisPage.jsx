@@ -16,7 +16,11 @@ import {
   TrendingUp,
   MessageSquare,
   GraduationCap,
-  Building
+  Building,
+  AlertCircle,
+  Target,
+  Lightbulb,
+  AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { analyzeResume, getResume } from '../services/api'
@@ -154,6 +158,228 @@ export default function AnalysisPage() {
         )}
       </div>
 
+      {/* JD Recommendation Banner - Show when no JD provided */}
+      {(!jobDescription && (analysis.jd_recommendation || !analysis.jd_match_score)) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Target className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 mb-1">
+                Add a Job Description for Better Insights
+              </h3>
+              <p className="text-sm text-amber-700 mb-3">
+                {analysis.jd_recommendation?.recommendation_message ||
+                  "Provide a job description to unlock skills gap analysis, match percentage, and role-specific interview questions."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(analysis.jd_recommendation?.benefits_of_jd || [
+                  "Skills match analysis",
+                  "Gap identification",
+                  "Match percentage",
+                  "Tailored interview questions"
+                ]).map((benefit, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full flex items-center">
+                    <Lightbulb className="w-3 h-3 mr-1" />
+                    {benefit}
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate('/', { state: { resumeId, showJdInput: true } })}
+                className="mt-4 inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Add Job Description
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Strengths & Concerns - New section */}
+      {(analysis.strengths?.length > 0 || analysis.concerns?.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {analysis.strengths?.length > 0 && (
+            <div className="bg-white rounded-xl border border-green-200 p-5">
+              <h3 className="font-semibold text-green-800 mb-3 flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                Key Strengths
+              </h3>
+              <div className="space-y-2">
+                {analysis.strengths.map((strength, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm text-green-700">
+                    <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{strength}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {analysis.concerns?.length > 0 && (
+            <div className="bg-white rounded-xl border border-orange-200 p-5">
+              <h3 className="font-semibold text-orange-800 mb-3 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-orange-600" />
+                Areas to Explore
+              </h3>
+              <div className="space-y-2">
+                {analysis.concerns.map((concern, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm text-orange-700">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{concern}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Skills Match Analysis - Show when JD is provided */}
+      {analysis.skills_match?.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+            <Target className="w-5 h-5 mr-2 text-primary-600" />
+            Skills Match Analysis
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {analysis.skills_match.map((match, idx) => (
+              <div
+                key={idx}
+                className={`flex items-center justify-between p-3 rounded-lg ${
+                  match.status === 'strong_match'
+                    ? 'bg-green-50 border border-green-200'
+                    : match.status === 'match'
+                    ? 'bg-blue-50 border border-blue-200'
+                    : match.status === 'weak_match'
+                    ? 'bg-yellow-50 border border-yellow-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}
+              >
+                <div>
+                  <span className="font-medium text-sm">{match.skill}</span>
+                  {match.evidence && (
+                    <p className="text-xs text-gray-500 mt-0.5">{match.evidence}</p>
+                  )}
+                </div>
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded ${
+                    match.status === 'strong_match'
+                      ? 'bg-green-200 text-green-800'
+                      : match.status === 'match'
+                      ? 'bg-blue-200 text-blue-800'
+                      : match.status === 'weak_match'
+                      ? 'bg-yellow-200 text-yellow-800'
+                      : 'bg-red-200 text-red-800'
+                  }`}
+                >
+                  {match.status.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Gap Analysis - Show when JD is provided */}
+      {analysis.gap_analysis && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+            <AlertCircle className="w-5 h-5 mr-2 text-orange-600" />
+            Gap Analysis
+          </h3>
+          <div className="space-y-4">
+            {analysis.gap_analysis.missing_required?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-red-600 uppercase mb-2">Missing Required Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.gap_analysis.missing_required.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {analysis.gap_analysis.missing_preferred?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-yellow-600 uppercase mb-2">Missing Preferred Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.gap_analysis.missing_preferred.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {analysis.gap_analysis.transferable_skills?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-green-600 uppercase mb-2">Transferable Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.gap_analysis.transferable_skills.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Hiring Recommendation - Show when JD is provided */}
+      {analysis.hiring_recommendation && (
+        <div className={`rounded-xl border p-5 ${
+          analysis.hiring_recommendation.decision === 'strong_yes'
+            ? 'bg-green-50 border-green-300'
+            : analysis.hiring_recommendation.decision === 'yes'
+            ? 'bg-green-50 border-green-200'
+            : analysis.hiring_recommendation.decision === 'maybe'
+            ? 'bg-yellow-50 border-yellow-200'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900">Hiring Recommendation</h3>
+            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+              analysis.hiring_recommendation.decision === 'strong_yes'
+                ? 'bg-green-200 text-green-800'
+                : analysis.hiring_recommendation.decision === 'yes'
+                ? 'bg-green-100 text-green-700'
+                : analysis.hiring_recommendation.decision === 'maybe'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {analysis.hiring_recommendation.decision.replace('_', ' ').toUpperCase()}
+            </span>
+          </div>
+          {analysis.hiring_recommendation.key_reasons?.length > 0 && (
+            <div className="mb-3">
+              <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Key Reasons</h4>
+              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                {analysis.hiring_recommendation.key_reasons.map((reason, idx) => (
+                  <li key={idx}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {analysis.hiring_recommendation.interview_focus?.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Interview Focus Areas</h4>
+              <div className="flex flex-wrap gap-2">
+                {analysis.hiring_recommendation.interview_focus.map((focus, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded">
+                    {focus}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Score Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={`p-4 rounded-lg border ${getScoreBg(analysis.overall_score)}`}>
@@ -181,6 +407,23 @@ export default function AnalysisPage() {
           </div>
         </div>
       </div>
+
+      {/* Key Skills - Core Competencies */}
+      {analysis.key_skills?.length > 0 && (
+        <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+            <Award className="w-5 h-5 mr-2 text-primary-600" />
+            Core Competencies
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {analysis.key_skills.map((skill, idx) => (
+              <span key={idx} className="px-4 py-2 bg-white text-primary-700 text-sm font-medium rounded-lg border border-primary-200 shadow-sm">
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Technical Skills */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">

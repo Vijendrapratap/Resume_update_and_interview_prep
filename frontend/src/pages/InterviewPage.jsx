@@ -15,7 +15,8 @@ import {
   User,
   Bot,
   PlayCircle,
-  StopCircle
+  StopCircle,
+  Settings
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -36,15 +37,18 @@ export default function InterviewPage() {
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [response, setResponse] = useState('')
   const [messages, setMessages] = useState([])
-  const [mode, setMode] = useState('text') // text or voice
+  const [mode, setMode] = useState('voice') // text or voice - default to voice for audio interviewer
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [interimTranscript, setInterimTranscript] = useState('')
+  const [audioEnabled, setAudioEnabled] = useState(true) // Auto-speak questions
+  const [audioLoading, setAudioLoading] = useState(false)
 
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const recognitionRef = useRef(null)
+  const audioRef = useRef(null)
 
   const jobDescription = location.state?.jobDescription || ''
 
@@ -149,9 +153,12 @@ export default function InterviewPage() {
         }
       ])
 
-      // Speak the intro and question if in voice mode
-      if (mode === 'voice') {
-        speakText(result.intro_message + ' ' + result.first_question.question)
+      // Auto-speak the intro and first question when audio is enabled
+      if (audioEnabled) {
+        // Small delay to let the UI render first
+        setTimeout(() => {
+          speakText(result.intro_message + ' ' + result.first_question.question)
+        }, 500)
       }
     } catch (error) {
       console.error('Error starting interview:', error)
@@ -197,7 +204,7 @@ export default function InterviewPage() {
           type: 'system',
           content: "Great job completing the interview! Click 'View Report' to see your detailed feedback and scores."
         }])
-        if (mode === 'voice') {
+        if (audioEnabled) {
           speakText("Great job completing the interview! You can now view your detailed report.")
         }
       } else if (result.next_question) {
@@ -210,7 +217,8 @@ export default function InterviewPage() {
           topic: result.next_question.topic
         }])
 
-        if (mode === 'voice') {
+        // Auto-speak the next question when audio is enabled
+        if (audioEnabled) {
           speakText(result.next_question.question)
         }
       }
@@ -223,7 +231,49 @@ export default function InterviewPage() {
   }
 
   const speakText = async (text) => {
-    // Use browser's built-in speech synthesis for simplicity
+    if (!audioEnabled || !text) return
+
+    // Stop any currently playing audio
+    stopSpeaking()
+
+    try {
+      setAudioLoading(true)
+      setIsSpeaking(true)
+
+      // Use backend TTS for high-quality neural voice
+      const result = await synthesizeSpeech(text)
+
+      if (result?.audio_url) {
+        // Create audio element and play
+        const audio = new Audio(result.audio_url)
+        audioRef.current = audio
+
+        audio.onended = () => {
+          setIsSpeaking(false)
+          setAudioLoading(false)
+        }
+        audio.onerror = () => {
+          setIsSpeaking(false)
+          setAudioLoading(false)
+          // Fallback to browser TTS
+          fallbackSpeakText(text)
+        }
+
+        await audio.play()
+        setAudioLoading(false)
+      } else {
+        // Fallback to browser TTS
+        fallbackSpeakText(text)
+      }
+    } catch (error) {
+      console.error('TTS error, falling back to browser:', error)
+      setAudioLoading(false)
+      // Fallback to browser's speech synthesis
+      fallbackSpeakText(text)
+    }
+  }
+
+  const fallbackSpeakText = (text) => {
     if ('speechSynthesis' in window) {
       setIsSpeaking(true)
       const utterance = new SpeechSynthesisUtterance(text)
@@ -236,10 +286,18 @@ export default function InterviewPage() {
   }
 
   const stopSpeaking = () => {
+    // Stop backend TTS audio
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
+    }
+    // Stop browser TTS
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      setIsSpeaking(false)
     }
+    setIsSpeaking(false)
+    setAudioLoading(false)
   }
 
   const startRecording = () => {
@@ -303,13 +361,40 @@ export default function InterviewPage() {
           <h1 className="text-2xl font-bold text-gray-900">Mock Interview</h1>
           <p className="text-gray-500 text-sm">
             Question {currentQuestion?.question_number || 1} of {currentQuestion?.total_questions || 7}
+            {isSpeaking && <span className="ml-2 text-primary-600">(Alex is speaking...)</span>}
+            {audioLoading && <span className="ml-2 text-gray-400">(Loading audio...)</span>}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Audio Toggle - Interviewer Voice */}
+          <button
+            onClick={() => {
+              setAudioEnabled(!audioEnabled)
+              if (audioEnabled) stopSpeaking()
+            }}
+            className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+              audioEnabled
+                ? 'bg-primary-50 border-primary-200 text-primary-700'
+                : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}
+            title={audioEnabled ? 'Interviewer voice enabled' : 'Interviewer voice disabled'}
+          >
+            {audioEnabled ? (
+              <>
+                <Volume2 className="w-4 h-4 mr-1.5" />
+                Audio On
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-4 h-4 mr-1.5" />
+                Audio Off
+              </>
+            )}
+          </button>
           {/* Mode Toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => { setMode('text'); stopRecording(); stopSpeaking(); }}
+              onClick={() => { setMode('text'); stopRecording(); }}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                 mode === 'text' ? 'bg-white shadow text-primary-600' : 'text-gray-600'
               }`}
@@ -368,26 +453,33 @@ export default function InterviewPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-primary-600">Q{message.questionNumber}</span>
                       <span className="text-xs text-gray-500">{message.topic}</span>
+                      {isSpeaking && index === messages.length - 1 && (
+                        <span className="text-xs text-primary-500 animate-pulse">Speaking...</span>
+                      )}
                     </div>
                     <p className="text-gray-800 text-sm">{message.content}</p>
-                    {mode === 'voice' && (
-                      <button
-                        onClick={() => isSpeaking ? stopSpeaking() : speakText(message.content)}
-                        className="mt-2 text-primary-600 hover:text-primary-700 text-xs flex items-center"
-                      >
-                        {isSpeaking ? (
-                          <>
-                            <VolumeX className="w-3 h-3 mr-1" />
-                            Stop
-                          </>
-                        ) : (
-                          <>
-                            <Volume2 className="w-3 h-3 mr-1" />
-                            Listen
-                          </>
-                        )}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => isSpeaking ? stopSpeaking() : speakText(message.content)}
+                      disabled={audioLoading}
+                      className="mt-2 text-primary-600 hover:text-primary-700 text-xs flex items-center disabled:opacity-50"
+                    >
+                      {audioLoading ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Loading...
+                        </>
+                      ) : isSpeaking ? (
+                        <>
+                          <VolumeX className="w-3 h-3 mr-1" />
+                          Stop
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3 h-3 mr-1" />
+                          Replay
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               ) : message.type === 'answer' ? (

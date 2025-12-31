@@ -1,7 +1,14 @@
 # TTS (Text-to-Speech) Configuration
 # Change 'default' to switch between providers
 
-default: "google"  # Options: elevenlabs, openai, google, azure, edge
+default: "edge"  # Options: elevenlabs, openai, google, azure, edge
+
+# Interview-specific TTS settings
+interview_tts:
+  enabled: true
+  auto_speak_questions: true
+  voice_profile: "professional_interviewer"
+  speed: 0.95  # Slightly slower for clarity
 
 providers:
   elevenlabs:
@@ -17,6 +24,11 @@ providers:
     # - MF3mGyEYCl7XYWbV9V6O (Elli)
     # - TxGEqnHWrfWFTfGW9XjX (Josh)
 
+  openai:
+    api_key_env: "OPENAI_API_KEY"
+    model: "tts-1"
+    voice: "nova"  # Options: alloy, echo, fable, onyx, nova, shimmer
+
   google:
     # Free option using gTTS library
     language: "en"
@@ -24,28 +36,54 @@ providers:
     slow: false
 
   edge:
-    # Free Microsoft Edge TTS
-    voice: "en-US-AriaNeural"
-    rate: "+0%"
+    # Free Microsoft Edge TTS - High quality neural voices
+    # Using more natural, conversational voices
+    voice: "en-US-AndrewNeural"  # Natural male voice - warm and professional
+    rate: "-3%"  # Slightly slower for natural conversation
     volume: "+0%"
-    pitch: "+0Hz"
+    pitch: "-2Hz"  # Slightly deeper for warmth
+    # Best voices for interview (most natural sounding):
+    # MALE (Recommended for Alex):
+    # - en-US-AndrewNeural (Warm, professional - BEST for interviewer)
+    # - en-US-BrianNeural (Clear, friendly)
+    # - en-US-ChristopherNeural (Professional, calm)
+    # - en-US-EricNeural (Conversational, natural)
+    # - en-US-DavisNeural (Professional, clear)
+    # FEMALE:
+    # - en-US-JennyNeural (Natural, conversational - BEST female)
+    # - en-US-AriaNeural (Warm, friendly)
+    # - en-US-MichelleNeural (Professional, clear)
+    # - en-US-SaraNeural (Conversational)
+    # - en-US-NancyNeural (Professional, articulate)
+    # BRITISH:
+    # - en-GB-RyanNeural (British male, professional)
+    # - en-GB-ThomasNeural (British male, natural)
+    # - en-GB-SoniaNeural (British female, clear)
 
 # Voice profiles for different scenarios
 voice_profiles:
   professional_interviewer:
+    edge_voice: "en-US-AndrewNeural"  # Most natural male voice
     elevenlabs_voice: "ErXwobaYiN019PkySvjV"  # Antoni
     openai_voice: "onyx"
-    description: "Professional male interviewer"
+    description: "Professional male interviewer - Alex (warm, conversational)"
 
   friendly_interviewer:
+    edge_voice: "en-US-JennyNeural"  # Most natural female voice
     elevenlabs_voice: "21m00Tcm4TlvDq8ikWAM"  # Rachel
     openai_voice: "nova"
-    description: "Friendly female interviewer"
+    description: "Friendly female interviewer (natural, warm)"
 
   technical_interviewer:
+    edge_voice: "en-US-ChristopherNeural"  # Professional male
     elevenlabs_voice: "TxGEqnHWrfWFTfGW9XjX"  # Josh
     openai_voice: "echo"
-    description: "Technical male interviewer"
+    description: "Technical male interviewer (clear, professional)"
+
+  casual_interviewer:
+    edge_voice: "en-US-BrianNeural"  # Friendly conversational
+    openai_voice: "fable"
+    description: "Casual interviewer (friendly, relaxed)"
 
 
 # STT (Speech-to-Text) Configuration

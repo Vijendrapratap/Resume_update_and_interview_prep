@@ -299,10 +299,19 @@ class TTSService:
         try:
             import edge_tts
 
-            voice = voice or config.get("voice", "en-US-AriaNeural")
-            rate = config.get("rate", "+0%")
+            # Use configured voice - AndrewNeural is natural and professional
+            voice = voice or config.get("voice", "en-US-AndrewNeural")
+            rate = config.get("rate", "-3%")  # Slightly slower for natural speech
+            volume = config.get("volume", "+0%")
+            pitch = config.get("pitch", "+0Hz")
 
-            communicate = edge_tts.Communicate(text, voice, rate=rate)
+            communicate = edge_tts.Communicate(
+                text,
+                voice,
+                rate=rate,
+                volume=volume,
+                pitch=pitch
+            )
 
             # Collect audio data
             audio_data = b""

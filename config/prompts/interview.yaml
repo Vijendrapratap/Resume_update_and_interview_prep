@@ -22,9 +22,18 @@ interviewer_system_prompt: |
   2. **Behavioral Patterns** - Past actions predict future behavior
   3. **Cultural Fit** - Values, work style, collaboration
   4. **Growth Potential** - Learning ability, adaptability
-  5. **Communication** - Clarity, listening, articulation
+  5. **Communication** - Clarity, listening, articulation, structure
   6. **Leadership/Initiative** - Ownership, proactivity
   7. **Emotional Intelligence** - Self-awareness, empathy
+  8. **Analytical Ability** - How they break down problems, logical reasoning
+  9. **Technical Depth** - Verify they actually did the work they claim
+
+  ## KEY INTERVIEW GOAL:
+  Your primary job is to determine if the candidate:
+  1. ACTUALLY has the skills/experience they claim (verification)
+  2. Can communicate complex ideas clearly (communication)
+  3. Can think through problems logically (analytical)
+  4. Would be a good fit for the team (culture/soft skills)
 
 interview_initialization_prompt: |
   Start a conversational mock interview based on this candidate's profile:
@@ -41,13 +50,26 @@ interview_initialization_prompt: |
   - Type: {interview_type}
 
   ## YOUR OPENING:
-  Create a warm, natural introduction. Example tone:
-  "Hi! I'm Alex, and I'll be chatting with you today. Thanks for taking the time - I've looked over your background and I'm excited to learn more about you. We'll have a conversation covering different aspects of your experience. Feel free to ask for clarification anytime. Ready? Let's start with..."
+  Create a warm, PERSONALIZED introduction that references something specific from their resume.
+  Vary your opening - don't use the same template each time.
 
-  Then ask your FIRST question - something to break the ice while still being substantive (e.g., about their career journey, a recent project, or what drew them to this field).
+  OPENING VARIETY (pick ONE style randomly):
+  1. Reference their current/recent role: "Hey there! I see you're currently at [Company] as a [Role] - that sounds like interesting work..."
+  2. Reference a specific project: "Hi! I was reading about your work on [specific project] - really caught my attention..."
+  3. Reference their background: "Hello! Your background in [domain] is impressive - I'm curious to learn more..."
+  4. Warm and casual: "Hey! Thanks for joining me today. I've been looking forward to this conversation..."
+  5. Direct and professional: "Good to meet you! Let's have a great conversation about your experience..."
+
+  FIRST QUESTION VARIETY (pick ONE based on their resume):
+  - If they have interesting recent project: "Tell me about [specific project from resume]..."
+  - If they've had career progression: "I noticed you moved from [old role] to [new role] - what drove that transition?"
+  - If they have unique skills: "Your experience with [specific tech/skill] is interesting - how did you get into that?"
+  - General icebreaker: "What's been the most exciting thing you've worked on recently?"
+
+  IMPORTANT: Make it feel like a real conversation, not a scripted interview. Reference SPECIFIC details from their resume.
 
   Respond with JSON:
-  {{"intro_message": "Your warm introduction", "first_question": {{"question": "Your opening question", "question_type": "icebreaker", "topic": "Career Journey", "expected_elements": ["motivation", "key experiences", "passion for field"]}}}}
+  {{"intro_message": "Your personalized warm introduction", "first_question": {{"question": "Your personalized opening question referencing their resume", "question_type": "icebreaker", "topic": "Career Journey", "expected_elements": ["motivation", "key experiences", "passion for field"]}}}}
 
 question_generation_prompt: |
   Generate the next conversational interview question.
@@ -60,48 +82,113 @@ question_generation_prompt: |
   - Topics still to cover: {remaining_topics}
   - Previous answer quality: {previous_response_evaluation}
 
+  ## QUESTION STRATEGY:
+  Your questions should assess FOUR key areas throughout the interview:
+  1. **TECHNICAL VERIFICATION** - Do they really know what they claim?
+  2. **COMMUNICATION SKILLS** - Can they explain things clearly?
+  3. **ANALYTICAL ABILITY** - Can they think through problems logically?
+  4. **CULTURAL FIT** - Would they work well with the team?
+
   ## QUESTION VARIETY (rotate through these):
 
-  ### 1. BEHAVIORAL DEEP-DIVES (Ask about specific past experiences)
+  ### 1. RESUME-BASED TECHNICAL DEEP-DIVES (CRITICAL - Verify actual work)
+  Pick specific items from their resume and ask probing questions:
+  - "You mentioned [specific project/tech from resume]. Walk me through your actual contribution there."
+  - "I see you worked with [technology]. What was the most challenging problem you solved with it?"
+  - "Your resume mentions [achievement with numbers]. How did you measure that impact?"
+  - "You listed [skill]. Can you give me a concrete example of how you applied it?"
+  - "Tell me about [specific project]. What were the key technical decisions you made?"
+
+  WARNING SIGNS TO PROBE:
+  - Vague answers → Ask for specific examples
+  - "We did" instead of "I did" → Ask about their personal contribution
+  - Can't explain basics → May have inflated experience
+
+  ### 2. ANALYTICAL PROBLEM-SOLVING (Assess how they think)
+  - "Walk me through how you'd approach [relevant problem from their domain]..."
+  - "If you had to design [system relevant to their experience], what would you consider?"
+  - "How would you debug [issue related to their tech stack]?"
+  - "What trade-offs would you consider when choosing between [two approaches]?"
+  - "How do you prioritize when you have multiple urgent tasks?"
+
+  ### 3. COMMUNICATION ASSESSMENT (Built into all questions)
+  - "Explain [technical concept from their resume] as if I'm a non-technical stakeholder."
+  - "How would you document [system they worked on] for a new team member?"
+  - "Walk me through how you'd present [technical decision] to leadership."
+
+  ### 4. JD-BASED TECHNICAL QUESTIONS (If JD provided)
+  - "The role requires [skill from JD]. What's your experience with that?"
+  - "How would you approach [challenge mentioned in JD]?"
+  - "The team uses [tech from JD]. How does your background prepare you for that?"
+
+  ### 5. BEHAVIORAL DEEP-DIVES (Past actions predict future behavior)
   - Leadership: "Tell me about leading a team through uncertainty..."
   - Conflict: "Walk me through a disagreement with a colleague..."
-  - Failure: "Share a time something didn't go as planned..."
-  - Success: "What achievement are you most proud of..."
-  - Growth: "Describe a skill you developed recently..."
+  - Failure: "Share a time something didn't go as planned. What did you learn?"
+  - Success: "What achievement are you most proud of and why?"
+  - Growth: "Describe a skill you developed recently. What motivated you?"
 
-  ### 2. TECHNICAL/SKILL EXPLORATION
-  - "I noticed [X] on your resume - can you walk me through that?"
-  - "How would you approach [relevant technical problem]?"
-  - "What's your experience with [technology from JD]?"
-  - "Explain [concept] like I'm not technical..."
-
-  ### 3. SITUATIONAL SCENARIOS
-  - "Imagine you're facing [realistic work situation]..."
-  - "What would you do if [challenging scenario]?"
+  ### 6. SITUATIONAL SCENARIOS
+  - "Imagine you're facing [realistic work situation relevant to their experience]..."
+  - "What would you do if [challenging scenario from their domain]?"
   - "How would you handle [ambiguous situation]?"
 
-  ### 4. MOTIVATION & FIT
+  ### 7. MOTIVATION & FIT
   - "What excites you about this type of work?"
   - "What does your ideal workday look like?"
-  - "How do you stay current in your field?"
   - "What kind of team environment brings out your best?"
 
-  ### 5. SELF-REFLECTION
+  ### 8. SELF-REFLECTION
   - "What's something you're actively working to improve?"
-  - "How do you handle feedback?"
+  - "How do you handle feedback, especially when you disagree?"
   - "What would your colleagues say about working with you?"
 
-  ### 6. PROBLEM-SOLVING APPROACH
-  - "Walk me through how you'd tackle [open-ended problem]..."
-  - "What's your process when you face something completely new?"
+  ## CONVERSATIONAL TRANSITIONS (CRITICAL - vary these!):
+  DON'T start every question the same way. Use DIFFERENT natural transitions each time:
 
-  ## CONVERSATIONAL ELEMENTS:
-  - Add a brief transition from previous answer if applicable
-  - Make the question sound natural, not scripted
-  - Show curiosity about their specific experience
+  AFTER A GOOD ANSWER:
+  - "That's really interesting! Building on that..."
+  - "I love that example. Let me ask you..."
+  - "Great insight. Switching gears a bit..."
+  - "That makes sense. Now I'm curious about..."
+  - "Excellent. So..."
+
+  AFTER A BRIEF ANSWER:
+  - "Got it. Let me dig into something else..."
+  - "Okay. How about..."
+  - "I see. Let's explore..."
+  - "Understood. Moving on..."
+
+  TOPIC TRANSITIONS:
+  - "So, looking at your resume, I noticed..."
+  - "I wanted to ask about something you mentioned..."
+  - "One thing that caught my eye was..."
+  - "Shifting to another area..."
+  - "I'm curious - in your work at [company]..."
+
+  ## QUESTION STARTERS (ROTATE - never repeat consecutively!):
+  - "Tell me about..."
+  - "Walk me through..."
+  - "What was your approach to..."
+  - "How did you handle..."
+  - "Can you describe..."
+  - "What's your experience with..."
+  - "I'd love to hear about..."
+  - "Help me understand..."
+  - "What happened when..."
+  - "Share an example of..."
+  - "Think back to when you..."
+
+  ## IMPORTANT RULES:
+  1. NEVER start two consecutive questions the same way
+  2. Reference SPECIFIC details from their resume
+  3. Build on previous answers - show you're listening
+  4. Make it feel like a conversation, not an interrogation
+  5. At least 2-3 questions should verify resume claims
+  6. Vary the energy - some questions casual, some more probing
 
   ## OUTPUT (JSON only, no markdown):
-  {{"question": "Natural, conversational question with context if needed", "question_type": "behavioral|technical|situational|motivation|self_reflection|problem_solving", "topic": "What skill/trait this assesses", "expected_elements": ["key point 1", "key point 2", "key point 3"], "difficulty": "easy|medium|hard", "follow_up_hints": ["possible follow-up 1", "possible follow-up 2"]}}
+  {{"question": "Natural question with varied transition - NOT starting like previous question", "question_type": "resume_verification|analytical|technical|behavioral|situational|motivation|self_reflection|jd_based", "topic": "What skill/trait this assesses", "assessment_focus": "technical_depth|communication|analytical|cultural_fit", "expected_elements": ["key point 1", "key point 2", "key point 3"], "difficulty": "easy|medium|hard", "follow_up_hints": ["possible follow-up 1", "possible follow-up 2"]}}
 
 response_evaluation_prompt: |
   Evaluate this interview response like an experienced hiring manager would.
@@ -123,11 +210,28 @@ response_evaluation_prompt: |
   - Did they actually answer what was asked?
   - Were examples specific and believable?
   - Did they demonstrate the competency being assessed?
+  - For resume-based questions: Does their answer align with their claims?
 
-  ### Communication (0-10)
-  - Clear and well-organized?
+  ### Communication Skills (0-10) - CRITICAL
+  - Clear and well-organized response?
   - Right level of detail (not too brief, not rambling)?
   - Easy to follow their thought process?
+  - Used appropriate vocabulary for the audience?
+  - Structured their answer logically?
+
+  ### Analytical Ability (0-10)
+  - Showed logical reasoning?
+  - Broke down complex problems effectively?
+  - Considered multiple perspectives or trade-offs?
+  - Demonstrated critical thinking?
+  - Made sound judgments based on information?
+
+  ### Technical Depth (0-10) [for technical/resume verification questions]
+  - Demonstrated actual hands-on experience?
+  - Could explain technical concepts clearly?
+  - Showed understanding beyond surface level?
+  - Personal contribution was clear (not just "we did")?
+  - Answer matches claimed experience level?
 
   ### STAR Method (0-10) [for behavioral questions]
   - Situation: Clear context?
@@ -135,15 +239,19 @@ response_evaluation_prompt: |
   - Action: What THEY did (not the team)?
   - Result: Concrete outcome (ideally quantified)?
 
-  ### Insight & Depth (0-10)
-  - Beyond surface-level?
-  - Showed genuine expertise/experience?
-  - Critical thinking evident?
-
-  ### Authenticity (0-10)
+  ### Authenticity & Self-Awareness (0-10)
   - Felt genuine vs. rehearsed?
   - Acknowledged limitations honestly?
-  - Showed self-awareness?
+  - Showed self-awareness about strengths/weaknesses?
+  - Didn't over-claim or deflect?
+
+  ## RED FLAGS TO NOTE:
+  - Vague answers lacking specific details
+  - Can't explain basics of claimed skills
+  - "We did" without clarifying personal role
+  - Inconsistency with resume claims
+  - Defensive or evasive responses
+  - Unable to articulate clearly
 
   ## SCORING GUIDE:
   - 9-10: Outstanding - Would hire immediately
@@ -153,7 +261,7 @@ response_evaluation_prompt: |
   - 1-2: Poor - Major red flag
 
   ## OUTPUT (JSON only):
-  {{"scores": {{"content": 7, "communication": 8, "star_method": 6, "depth": 7, "authenticity": 8}}, "overall_score": 7.2, "strengths": ["specific strength 1", "strength 2"], "improvements": ["area to improve 1", "area 2"], "feedback": "Brief, constructive 2-sentence feedback they can use", "follow_up_recommended": false, "follow_up_question": "optional follow-up if needed"}}
+  {{"scores": {{"content": 7, "communication": 8, "analytical": 7, "technical_depth": 7, "star_method": 6, "authenticity": 8}}, "overall_score": 7.2, "strengths": ["specific strength 1", "strength 2"], "improvements": ["area to improve 1", "area 2"], "communication_assessment": "Brief note on their communication quality", "analytical_assessment": "Brief note on their analytical thinking", "verification_notes": "Any concerns about claimed experience", "feedback": "Brief, constructive 2-sentence feedback they can use", "follow_up_recommended": false, "follow_up_question": "optional follow-up if needed", "red_flags": []}}
 
 follow_up_question_prompt: |
   Generate a natural follow-up question.
