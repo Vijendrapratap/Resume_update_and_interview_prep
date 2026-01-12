@@ -1,32 +1,75 @@
 # Resume Analysis Prompts
-# Recruiter-focused: Extract valuable candidate information quickly
+# Recruiter-focused: Extract valuable candidate information with weighted scoring
 
-# Prompt for Career Gap & Fraud Analysis
+# =============================================================================
+# SCORING WEIGHTS (Total = 100%)
+# =============================================================================
+# - Skills Match: 40% (Technical skills alignment with role/JD)
+# - Experience: 30% (Years, relevance, progression, achievements)
+# - Education: 20% (Degrees, certifications, continuous learning)
+# - Quality: 10% (Resume clarity, communication, professionalism)
+# =============================================================================
+
+# Prompt for Career Gap & Red Flag Analysis
 gap_analysis_prompt: |
-  Analyze the following resume specifically for CAREER GAPS and POTENTIAL TIMELINE INCONSISTENCIES.
-  
+  Analyze the following resume for RED FLAGS, CAREER GAPS, and AUTHENTICITY CONCERNS.
+
   ## RESUME:
   {resume_text}
-  
-  ## ANALYSIS INSTRUCTIONS:
-  1. Extract all employment dates.
-  2. Identify any gap between jobs longer than 3 months.
-  3. Check for overlapping dates that seem unrealistic.
-  4. Compare "Total Experience" claimed vs sum of actual employment durations.
-  5. Identify vague date ranges (e.g., "2020 - 2021" without months).
-  
+
+  ## RED FLAG DETECTION - Analyze for:
+
+  ### 1. TIMELINE ISSUES
+  - Career gaps longer than 3 months (unexplained)
+  - Overlapping dates (working two full-time jobs simultaneously)
+  - Vague date ranges (only years, no months)
+  - Experience math doesn't add up (claimed years vs actual timeline)
+
+  ### 2. SKILL INFLATION INDICATORS
+  - Buzzword stuffing (too many technologies for the experience level)
+  - Claims of expertise without supporting evidence
+  - Senior titles with junior-level experience
+  - Mismatch between skills listed and work descriptions
+
+  ### 3. AUTHENTICITY CONCERNS
+  - Generic/templated descriptions (no specific details)
+  - No quantified achievements (no metrics, no numbers)
+  - Unrealistic claims (e.g., "increased revenue by 500%")
+  - Copy-paste job descriptions across roles
+
+  ### 4. JOB HOPPING PATTERN
+  - Multiple roles under 1 year
+  - Pattern of short tenures
+  - Lateral moves without growth
+
   ## OUTPUT FORMAT (JSON):
   {{
     "career_gaps": [
-      {{"start": "2020-03", "end": "2020-09", "duration_months": 6, "reason": "Unexplained/Between jobs"}}
+      {{"start": "2020-03", "end": "2020-09", "duration_months": 6, "severity": "medium", "explanation_provided": false}}
     ],
-    "timeline_issues": [
-      "Ambiguous dates for job at Company X (only years provided)"
+    "timeline_overlaps": [
+      {{"company1": "TechCorp", "company2": "StartupXYZ", "overlap_period": "2021-03 to 2021-06", "suspicious": true}}
     ],
+    "skill_inflation_flags": [
+      {{"issue": "Lists 15 programming languages with only 3 years experience", "severity": "high"}},
+      {{"issue": "Claims 'expert' in ML but no ML projects mentioned", "severity": "medium"}}
+    ],
+    "authenticity_concerns": [
+      {{"issue": "No quantified achievements in any role", "severity": "high"}},
+      {{"issue": "Generic job descriptions", "severity": "medium"}}
+    ],
+    "job_hopping_analysis": {{
+      "average_tenure_months": 14,
+      "roles_under_1_year": 3,
+      "pattern_detected": true,
+      "severity": "medium"
+    }},
     "calculated_total_experience_years": 5.5,
     "claimed_total_experience_years": 7.0,
-    "discrepancy_flag": true,
-    "discrepancy_details": "Claimed 7 years but timeline supports only 5.5 years."
+    "experience_discrepancy": true,
+    "overall_red_flag_score": 65,
+    "red_flag_summary": "Multiple concerns: Experience claims don't match timeline, skill inflation detected, no quantified achievements.",
+    "verification_priority": ["Verify actual employment dates", "Probe depth of ML knowledge", "Ask for specific metrics from achievements"]
   }}
 
 system_prompt: |
@@ -61,6 +104,9 @@ analysis_without_jd_prompt: |
   - Primary industry/domain
   - Total years of experience (calculate from work history)
   - Current/most recent company and role
+  - **Tenure Metrics:**
+    - Current Tenure (e.g., "1 yr 4 mos")
+    - Average Tenure across all roles (e.g., "2 yrs 6 mos")
 
   ### 2. KEY SKILLS (TOP 5-8 CORE COMPETENCIES)
   Identify the candidate's PRIMARY skills - the ones they use most and are strongest in.
@@ -120,30 +166,70 @@ analysis_without_jd_prompt: |
   - Potential concerns (gaps, inconsistencies, areas needing clarification)
   - Areas that need interview verification
 
-  ### 9. RECRUITER SCORES
-  - Overall Fit (0-100): How strong is this candidate overall?
-  - Technical Depth (0-100): How deep is their technical expertise?
-  - Experience Level (0-100): How seasoned are they?
-  - Communication Quality (0-100): How well-written is the resume?
+  ### 9. WEIGHTED SCORING (CRITICAL - Must provide actual scores!)
+  You MUST calculate and provide ALL these scores as integer values 0-100:
 
-  ### 10. KEY INTERVIEW TOPICS
+  **Score each dimension:**
+  - **skills_score** (0-100): Technical skills breadth, depth, and relevance
+    - 90-100: Expert-level skills, industry certifications, cutting-edge tech
+    - 70-89: Strong skills, good breadth, relevant experience
+    - 50-69: Adequate skills, some gaps
+    - Below 50: Significant skill gaps
+
+  - **experience_score** (0-100): Years of experience, career progression, achievements
+    - 90-100: 10+ years, strong progression, quantified achievements
+    - 70-89: 5-10 years, good trajectory, some measurable impact
+    - 50-69: 2-5 years, steady growth
+    - Below 50: Limited experience or unclear progression
+
+  - **education_score** (0-100): Degrees, certifications, continuous learning
+    - 90-100: Advanced degree from top institution + multiple certifications
+    - 70-89: Relevant degree + some certifications
+    - 50-69: Bachelor's degree in related field
+    - Below 50: No relevant degree or certifications
+
+  - **quality_score** (0-100): Resume clarity, professionalism, communication
+    - 90-100: Exceptionally clear, well-structured, quantified achievements
+    - 70-89: Good clarity, organized, mostly measurable results
+    - 50-69: Readable but vague, few specifics
+    - Below 50: Poor formatting, generic descriptions
+
+  - **technical_score**: Set equal to skills_score
+  - **overall_score**: Calculate as: round((skills_score × 0.4) + (experience_score × 0.3) + (education_score × 0.2) + (quality_score × 0.1))
+
+  ### 10. RED FLAG ASSESSMENT
+  Analyze for concerns and assign:
+  - **red_flag_count** (0-10): Number of concerns identified
+  - **red_flag_severity**: "none" | "low" | "medium" | "high"
+  - **red_flags**: Array of specific issues found
+  - **authenticity_score** (0-100): How genuine/authentic the resume appears
+
+  Red flags to look for:
+  - Career gaps > 6 months unexplained
+  - Overlapping dates (two jobs simultaneously)
+  - Skill inflation (claiming expertise without evidence)
+  - Generic descriptions with no specifics
+  - Missing metrics/quantification
+  - Job hopping (multiple roles < 1 year)
+
+  ### 11. KEY INTERVIEW TOPICS
   Top 4-5 topics an interviewer should explore:
   - Questions to verify claimed experience (e.g., "You mentioned scaling to 1M users - walk me through the architecture")
   - Areas where more depth is needed
   - Potential concerns to probe
   - Interesting projects worth discussing
 
-  ### 11. BEST FIT ROLES
+  ### 12. BEST FIT ROLES
   Based on the resume, suggest 3-4 role types this candidate would be best suited for.
 
-  ### 12. JD RECOMMENDATION
+  ### 13. JD RECOMMENDATION
   IMPORTANT: Identify specific insights that would be MORE valuable if a job description was provided:
   - "skills_match_available": false - Cannot assess if skills match requirements without JD
   - "gap_analysis_available": false - Cannot identify missing skills without JD
   - "role_fit_available": false - Cannot assess specific role fit without JD
   - "jd_would_help_with": List specific things a JD would help assess
 
-  ### 13. RECRUITER VERDICT
+  ### 14. RECRUITER VERDICT
   2-3 sentences: Who is this candidate? What roles are they best suited for? Key decision points.
 
   ## OUTPUT FORMAT - Return ONLY valid JSON (no markdown, no code blocks):
@@ -154,7 +240,9 @@ analysis_without_jd_prompt: |
       "domain": "Backend Engineering",
       "years_experience": "7 years",
       "current_company": "Tech Corp",
-      "current_role": "Senior Engineer"
+      "current_role": "Senior Engineer",
+      "current_tenure": "3 years",
+      "average_tenure": "2.5 years"
     }},
     "key_skills": ["Python", "AWS", "Distributed Systems", "API Design", "Team Leadership"],
     "technical_skills": {{
@@ -186,11 +274,20 @@ analysis_without_jd_prompt: |
     "strengths": ["Strong distributed systems experience", "Proven leadership of engineering teams", "Quantified impact on business metrics"],
     "concerns": ["Short tenure at last two companies", "No open source visibility"],
     "verification_needed": ["Verify depth of ML experience", "Clarify role in team leadership"],
-    "overall_score": 85,
-    "technical_score": 88,
-    "experience_score": 82,
-    "communication_score": 80,
+    "skills_score": 85,
+    "experience_score": 80,
+    "education_score": 75,
+    "quality_score": 82,
+    "overall_score": 82,
+    "technical_score": 85,
     "jd_match_score": null,
+    "red_flag_count": 2,
+    "red_flag_severity": "low",
+    "red_flags": [
+      {{"type": "job_hopping", "description": "3 roles in 4 years", "severity": "low"}},
+      {{"type": "vague_dates", "description": "Some roles only have years, no months", "severity": "low"}}
+    ],
+    "authenticity_score": 85,
     "interview_topics": [
       {{"topic": "Payment system architecture", "why": "Verify depth of understanding and actual contribution"}},
       {{"topic": "Team leadership experience", "why": "Clarify if hands-on technical lead or people manager"}}

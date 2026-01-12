@@ -12,16 +12,22 @@ export const AuthProvider = ({ children }) => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // In a real app, verify token validity with an endpoint like /auth/me
-        // For now, we trust the token if it exists and decode simple claims if possible
-        // or just assume logged in state. 
-        // Since we don't have a /me endpoint yet, we'll just check token existence.
-        if (token) {
-            // Ideally fetch user details here
+        const fetchUser = async () => {
+            if (token) {
+                try {
+                    const userData = await api.get('/auth/me');
+                    setUser(userData);
+                } catch (error) {
+                    // Token is invalid, clear it
+                    console.error('Token validation failed:', error);
+                    localStorage.removeItem('token');
+                    setToken(null);
+                    setUser(null);
+                }
+            }
             setLoading(false);
-        } else {
-            setLoading(false);
-        }
+        };
+        fetchUser();
     }, [token]);
 
     const login = async (email, password) => {
@@ -38,12 +44,14 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', access_token);
             setToken(access_token);
 
-            // Decode token to get user info (mocking this part for now)
-            // In production use jwt-decode
-            setUser({ email, role: 'recruiter' }); // Mock user role
+            // Fetch user info from /auth/me
+            const userData = await api.get('/auth/me', {
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+            setUser(userData);
 
             toast.success('Login successful!');
-            navigate('/dashboard'); // Recruiters go to dashboard
+            navigate('/dashboard');
         } catch (error) {
             console.error('Login error:', error);
             toast.error(error.response?.data?.detail || 'Login failed');

@@ -81,6 +81,27 @@ export default function LoginPage() {
                         </button>
                     </div>
                 </form>
+
+                {/* Demo Credentials */}
+                <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <p className="text-xs text-gray-400 text-center mb-3">Demo Accounts (click to fill)</p>
+                    <div className="space-y-2">
+                        <button
+                            onClick={() => { setEmail('recruiter@company.com'); setPassword('recruiter123'); }}
+                            className="w-full text-left px-3 py-2 bg-gray-800 rounded-md hover:bg-gray-600 transition-colors"
+                        >
+                            <span className="text-sm text-white">recruiter@company.com</span>
+                            <span className="text-xs text-gray-400 ml-2">/ recruiter123</span>
+                        </button>
+                        <button
+                            onClick={() => { setEmail('hr@techcorp.com'); setPassword('hr123456'); }}
+                            className="w-full text-left px-3 py-2 bg-gray-800 rounded-md hover:bg-gray-600 transition-colors"
+                        >
+                            <span className="text-sm text-white">hr@techcorp.com</span>
+                            <span className="text-xs text-gray-400 ml-2">/ hr123456</span>
+                        </button>
+                    </div>
+                </div>
             </motion.div>
         </div>
     );

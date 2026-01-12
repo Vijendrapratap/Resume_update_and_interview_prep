@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
-    role: str = "candidate"  # candidate, recruiter, super_admin
+    role: str = "recruiter"  # recruiter or super_admin (candidates don't need accounts)
 
 # Properties to receive via API on creation
 class UserCreate(UserBase):

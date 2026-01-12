@@ -247,12 +247,23 @@ class ResumeAnalyzer:
 
     def _validate_result(self, result: Dict, has_jd: bool = False) -> Dict:
         """Ensure result has all required fields with defaults"""
-        # Common defaults for all analyses
+        # Common defaults for all analyses - using weighted scoring
+        # Skills: 40%, Experience: 30%, Education: 20%, Quality: 10%
         defaults = {
+            # Weighted scores
+            "skills_score": 0,
+            "experience_score": 0,
+            "education_score": 0,
+            "quality_score": 0,
             "overall_score": 0,
             "technical_score": 0,
-            "experience_score": 0,
             "jd_match_score": None,
+            # Red flags
+            "red_flag_count": 0,
+            "red_flag_severity": "none",
+            "red_flags": [],
+            "authenticity_score": 100,
+            # Profile and skills
             "candidate_profile": {},
             "technical_skills": {},
             "soft_skills": [],
@@ -262,6 +273,7 @@ class ResumeAnalyzer:
             "education": [],
             "certifications": [],
             "interview_topics": [],
+            "key_skills": [],
             "verdict": ""
         }
 

@@ -139,6 +139,36 @@ export default function ReportPage() {
         </div>
       </motion.div>
 
+      {/* OVI-Inspired Pipeline Tracker */}
+      <div className="w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center overflow-x-auto">
+        {['Received', 'CV Screen', 'Link Sent', 'AI Interview', 'Report Ready'].map((step, idx) => (
+          <div key={step} className="flex flex-col items-center min-w-[100px]">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mb-2 
+                  ${idx <= 3 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              {idx <= 3 ? <CheckCircle className="w-5 h-5" /> : idx + 1}
+            </div>
+            <span className={`text-xs font-medium ${idx <= 3 ? 'text-green-700' : 'text-gray-400'}`}>{step}</span>
+            {idx <= 3 && <span className="text-[10px] text-green-600 mt-1">Completed</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* Tenure & Experience Metrics (New) */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card text-center py-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Total Experience</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">7 Years</p>
+        </div>
+        <div className="card text-center py-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Avg Tenure</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">2.3 Years</p>
+        </div>
+        <div className="card text-center py-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Current Tenure</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">0.9 Years</p>
+        </div>
+      </div>
+
       {/* Overall Score Card */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -329,77 +359,75 @@ export default function ReportPage() {
         </div>
       </motion.div>
 
-      {/* Question Feedback */}
+      {/* Detailed Question Feedback (OVI Style) */}
       {
         report.question_feedback?.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="card"
+            className="card overflow-hidden"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2 text-primary-600" />
-              Detailed Question Feedback
+              Interview Transcript & Analysis
             </h3>
-            <div className="space-y-6">
-              {report.question_feedback.map((q, idx) => (
-                <div key={idx} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-medium text-sm">
-                        {q.question_number}
-                      </span>
-                      <div>
-                        <p className="font-medium text-gray-900">{q.question}</p>
-                      </div>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${q.score >= 7 ? 'bg-success-100 text-success-700' :
-                      q.score >= 5 ? 'bg-warning-100 text-warning-700' :
-                        'bg-danger-100 text-danger-700'
-                      }`}>
-                      {q.score}/10
-                    </div>
-                  </div>
 
-                  <div className="ml-11 space-y-3">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Your Response:</span> {q.response_summary}
-                      </p>
-                    </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
+                    <th className="py-3 pl-4">Q#</th>
+                    <th className="py-3">Question</th>
+                    <th className="py-3">Summary & Analysis</th>
+                    <th className="py-3 text-right pr-4">Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {report.question_feedback.map((q, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 pl-4 align-top w-12 text-center">
+                        <span className="inline-block w-6 h-6 bg-gray-100 text-gray-600 text-xs font-bold rounded-full pt-1">
+                          {q.question_number}
+                        </span>
+                      </td>
+                      <td className="py-4 align-top w-1/3 pr-4">
+                        <p className="text-sm font-medium text-gray-900">{q.question}</p>
+                      </td>
+                      <td className="py-4 align-top">
+                        <p className="text-sm text-gray-600 mb-2 font-medium">Response Summary:</p>
+                        <p className="text-sm text-gray-600 mb-3">{q.response_summary}</p>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {q.strengths?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-success-600 mb-1">What went well</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {q.strengths.slice(0, 2).map((s, i) => (
-                              <li key={i} className="flex items-start">
-                                <CheckCircle className="w-3 h-3 text-success-500 mr-1.5 mt-0.5 flex-shrink-0" />
-                                {s}
-                              </li>
-                            ))}
-                          </ul>
+                        {(q.strengths?.length > 0 || q.improvements?.length > 0) && (
+                          <div className="flex gap-4">
+                            {q.strengths?.length > 0 && (
+                              <span className="inline-flex items-center text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Strong Point
+                              </span>
+                            )}
+                            {q.improvements?.length > 0 && (
+                              <span className="inline-flex items-center text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded">
+                                <TrendingUp className="w-3 h-3 mr-1" />
+                                Needs Improvement
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 align-top text-right pr-4">
+                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full border-2 font-bold text-xs
+                          ${q.score >= 7 ? 'border-green-500 text-green-600' :
+                            q.score >= 5 ? 'border-orange-500 text-orange-600' :
+                              'border-red-500 text-red-600'
+                          }`}>
+                          {q.score}
                         </div>
-                      )}
-                      {q.improvements?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-warning-600 mb-1">To improve</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {q.improvements.slice(0, 2).map((i, idx) => (
-                              <li key={idx} className="flex items-start">
-                                <TrendingUp className="w-3 h-3 text-warning-500 mr-1.5 mt-0.5 flex-shrink-0" />
-                                {i}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </motion.div>
         )

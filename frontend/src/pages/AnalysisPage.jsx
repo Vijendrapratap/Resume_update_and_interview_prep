@@ -56,24 +56,24 @@ export default function AnalysisPage() {
   }
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-600'
-    if (score >= 60) return 'text-yellow-600'
-    return 'text-red-600'
+    if (score >= 80) return 'text-green-400'
+    if (score >= 60) return 'text-yellow-400'
+    return 'text-red-400'
   }
 
   const getScoreBg = (score) => {
-    if (score >= 80) return 'bg-green-50 border-green-200'
-    if (score >= 60) return 'bg-yellow-50 border-yellow-200'
-    return 'bg-red-50 border-red-200'
+    if (score >= 80) return 'bg-green-500/10 border-green-500/30'
+    if (score >= 60) return 'bg-yellow-500/10 border-yellow-500/30'
+    return 'bg-red-500/10 border-red-500/30'
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-4" />
-          <p className="text-lg font-medium text-gray-900">Analyzing resume...</p>
-          <p className="text-gray-500 text-sm">Extracting candidate information</p>
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-lg font-medium text-white">Analyzing resume...</p>
+          <p className="text-gray-400 text-sm">Extracting candidate information and calculating scores</p>
         </div>
       </div>
     )
@@ -82,8 +82,8 @@ export default function AnalysisPage() {
   if (!analysis) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 mb-4">Failed to load analysis</p>
-        <button onClick={loadAnalysis} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
+        <p className="text-gray-400 mb-4">Failed to load analysis</p>
+        <button onClick={loadAnalysis} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           Try Again
         </button>
       </div>
@@ -95,19 +95,19 @@ export default function AnalysisPage() {
   const domainExpertise = analysis.domain_expertise || {}
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Candidate Analysis</h1>
-          <p className="text-gray-500 text-sm flex items-center mt-1">
+          <h1 className="text-2xl font-bold text-white">Candidate Analysis</h1>
+          <p className="text-gray-400 text-sm flex items-center mt-1">
             <FileText className="w-4 h-4 mr-1" />
             {resume?.filename}
           </p>
         </div>
         <button
           onClick={loadAnalysis}
-          className="flex items-center text-gray-600 hover:text-gray-900 text-sm"
+          className="flex items-center text-gray-400 hover:text-white text-sm"
         >
           <RefreshCw className="w-4 h-4 mr-1" />
           Refresh
@@ -115,34 +115,34 @@ export default function AnalysisPage() {
       </div>
 
       {/* Candidate Profile Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <User className="w-8 h-8 text-primary-600" />
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <User className="w-8 h-8 text-blue-400" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-white">
               {profile.title || 'Professional'}
             </h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded">
+              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-medium rounded">
                 {profile.career_stage || 'Professional'}
               </span>
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+              <span className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
                 {profile.domain || 'Technology'}
               </span>
               {profile.years_experience && (
-                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded">
+                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">
                   {profile.years_experience}
                 </span>
               )}
             </div>
             {(profile.current_company || profile.current_role) && (
-              <p className="text-sm text-gray-600 mt-2 flex items-center">
+              <p className="text-sm text-gray-400 mt-2 flex items-center">
                 <Building className="w-4 h-4 mr-1" />
                 {profile.current_role && <span>{profile.current_role}</span>}
                 {profile.current_role && profile.current_company && <span className="mx-1">at</span>}
-                {profile.current_company && <span className="font-medium">{profile.current_company}</span>}
+                {profile.current_company && <span className="font-medium text-white">{profile.current_company}</span>}
               </p>
             )}
           </div>
@@ -150,9 +150,9 @@ export default function AnalysisPage() {
 
         {/* Recruiter Verdict */}
         {analysis.verdict && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <strong>Recruiter Assessment:</strong> {analysis.verdict}
+          <div className="mt-4 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+            <p className="text-sm text-blue-300">
+              <strong className="text-blue-400">Recruiter Assessment:</strong> {analysis.verdict}
             </p>
           </div>
         )}
@@ -376,33 +376,88 @@ export default function AnalysisPage() {
         </div>
       )}
 
-      {/* Score Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={`p-4 rounded-lg border ${getScoreBg(analysis.overall_score)}`}>
-          <span className="text-xs font-medium text-gray-600">Overall</span>
+      {/* Score Cards - Weighted Scoring */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className={`p-4 rounded-lg border ${getScoreBg(analysis.overall_score)} bg-gray-800`}>
+          <span className="text-xs font-medium text-gray-400">Overall Score</span>
           <div className={`text-3xl font-bold ${getScoreColor(analysis.overall_score)}`}>
             {Math.round(analysis.overall_score || 0)}
           </div>
         </div>
-        <div className="p-4 rounded-lg border border-gray-200 bg-white">
-          <span className="text-xs font-medium text-gray-600">Technical</span>
-          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.technical_score || analysis.ats_score)}`}>
-            {Math.round(analysis.technical_score || analysis.ats_score || 0)}
+        <div className="p-4 rounded-lg border border-gray-700 bg-gray-800">
+          <span className="text-xs font-medium text-gray-400">Skills (40%)</span>
+          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.skills_score || analysis.technical_score)}`}>
+            {Math.round(analysis.skills_score || analysis.technical_score || 0)}
           </div>
         </div>
-        <div className="p-4 rounded-lg border border-gray-200 bg-white">
-          <span className="text-xs font-medium text-gray-600">Experience</span>
-          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.experience_score || analysis.content_score)}`}>
-            {Math.round(analysis.experience_score || analysis.content_score || 0)}
+        <div className="p-4 rounded-lg border border-gray-700 bg-gray-800">
+          <span className="text-xs font-medium text-gray-400">Experience (30%)</span>
+          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.experience_score)}`}>
+            {Math.round(analysis.experience_score || 0)}
           </div>
         </div>
-        <div className="p-4 rounded-lg border border-gray-200 bg-white">
-          <span className="text-xs font-medium text-gray-600">JD Match</span>
-          <div className={`text-2xl font-bold mt-1 ${analysis.jd_match_score ? getScoreColor(analysis.jd_match_score) : 'text-gray-400'}`}>
-            {analysis.jd_match_score ? Math.round(analysis.jd_match_score) : 'N/A'}
+        <div className="p-4 rounded-lg border border-gray-700 bg-gray-800">
+          <span className="text-xs font-medium text-gray-400">Education (20%)</span>
+          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.education_score)}`}>
+            {Math.round(analysis.education_score || 0)}
+          </div>
+        </div>
+        <div className="p-4 rounded-lg border border-gray-700 bg-gray-800">
+          <span className="text-xs font-medium text-gray-400">Quality (10%)</span>
+          <div className={`text-2xl font-bold mt-1 ${getScoreColor(analysis.quality_score)}`}>
+            {Math.round(analysis.quality_score || 0)}
           </div>
         </div>
       </div>
+
+      {/* Red Flags Section */}
+      {(analysis.red_flags?.length > 0 || analysis.red_flag_count > 0) && (
+        <div className={`p-5 rounded-xl border ${
+          analysis.red_flag_severity === 'high' ? 'bg-red-500/10 border-red-500/30' :
+          analysis.red_flag_severity === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30' :
+          'bg-gray-800 border-gray-700'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white flex items-center">
+              <AlertTriangle className={`w-5 h-5 mr-2 ${
+                analysis.red_flag_severity === 'high' ? 'text-red-400' :
+                analysis.red_flag_severity === 'medium' ? 'text-yellow-400' :
+                'text-gray-400'
+              }`} />
+              Red Flag Assessment
+            </h3>
+            <div className="flex items-center space-x-3">
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                analysis.red_flag_severity === 'high' ? 'bg-red-500/20 text-red-400' :
+                analysis.red_flag_severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                analysis.red_flag_severity === 'low' ? 'bg-blue-500/20 text-blue-400' :
+                'bg-green-500/20 text-green-400'
+              }`}>
+                {analysis.red_flag_count || 0} flags ({analysis.red_flag_severity || 'none'})
+              </span>
+              <span className="text-sm text-gray-400">
+                Authenticity: <span className={getScoreColor(analysis.authenticity_score)}>{analysis.authenticity_score || 100}%</span>
+              </span>
+            </div>
+          </div>
+          {analysis.red_flags?.length > 0 && (
+            <div className="space-y-2">
+              {analysis.red_flags.map((flag, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-sm">
+                  <AlertCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                    flag.severity === 'high' ? 'text-red-400' :
+                    flag.severity === 'medium' ? 'text-yellow-400' :
+                    'text-blue-400'
+                  }`} />
+                  <span className="text-gray-300">
+                    <span className="font-medium text-white">{flag.type?.replace('_', ' ')}:</span> {flag.description}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Key Skills - Core Competencies */}
       {analysis.key_skills?.length > 0 && (
