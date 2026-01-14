@@ -255,13 +255,83 @@ class InterviewEngine:
                 "follow_up_recommended": False
             }
 
+    async def evaluate_answer_depth(
+        self,
+        question: Dict,
+        response: str
+    ) -> Dict:
+        """
+        Evaluate if an answer is deep enough or needs probing.
+        Returns depth assessment and follow-up recommendation.
+        """
+        # Quick heuristics for shallow answers
+        word_count = len(response.split())
+
+        # Very short answers almost always need follow-up
+        if word_count < 20:
+            return {
+                "depth": "shallow",
+                "needs_follow_up": True,
+                "reason": "Response is too brief - needs more detail",
+                "suggested_probe": "Could you walk me through that in more detail?"
+            }
+
+        # Check for vague patterns
+        vague_patterns = [
+            "we did", "the team", "various", "many things",
+            "a lot of", "stuff", "things like that", "etc",
+            "you know", "basically", "kind of", "sort of"
+        ]
+
+        response_lower = response.lower()
+        vague_count = sum(1 for p in vague_patterns if p in response_lower)
+
+        # Check for specific indicators (numbers, names, concrete details)
+        has_numbers = any(char.isdigit() for char in response)
+        has_specific_tech = any(tech in response_lower for tech in [
+            "python", "java", "react", "aws", "docker", "kubernetes",
+            "sql", "mongodb", "redis", "api", "rest", "graphql"
+        ])
+
+        # Determine depth
+        if word_count < 50 and vague_count >= 2:
+            return {
+                "depth": "shallow",
+                "needs_follow_up": True,
+                "reason": "Answer lacks specific details and uses vague language",
+                "suggested_probe": "That's interesting. Can you give me a specific example?"
+            }
+
+        if "we" in response_lower and "i" not in response_lower:
+            return {
+                "depth": "unclear_contribution",
+                "needs_follow_up": True,
+                "reason": "Unclear about personal contribution vs team work",
+                "suggested_probe": "What was your specific role in that?"
+            }
+
+        if word_count >= 50 and (has_numbers or has_specific_tech) and vague_count < 2:
+            return {
+                "depth": "adequate",
+                "needs_follow_up": False,
+                "reason": "Response has sufficient depth and specificity"
+            }
+
+        # Medium depth - might benefit from follow-up but not required
+        return {
+            "depth": "medium",
+            "needs_follow_up": word_count < 80,
+            "reason": "Response is acceptable but could be deeper",
+            "suggested_probe": "What was the biggest challenge you faced there?"
+        }
+
     async def generate_follow_up(
         self,
         original_question: Dict,
         response: str,
         reason: str
-    ) -> str:
-        """Generate a follow-up question."""
+    ) -> Dict:
+        """Generate a contextual follow-up question based on the response."""
         prompt = self.prompts.get("follow_up_question_prompt", "").format(
             original_question=original_question.get("question", ""),
             response=response,
@@ -273,11 +343,22 @@ class InterviewEngine:
                 prompt=prompt,
                 temperature=0.7
             )
-            return follow_up.strip()
+            return {
+                "question": follow_up.strip(),
+                "question_type": "follow_up",
+                "topic": original_question.get("topic", "clarification"),
+                "is_follow_up": True,
+                "parent_question": original_question.get("question", "")
+            }
 
         except Exception as e:
             logger.error(f"Follow-up generation failed: {str(e)}")
-            return "Could you elaborate more on that?"
+            return {
+                "question": "Could you elaborate more on that?",
+                "question_type": "follow_up",
+                "topic": "clarification",
+                "is_follow_up": True
+            }
 
     async def generate_closing(
         self,
@@ -330,6 +411,7 @@ class InterviewEngine:
 
         # Check for missing skills
         keywords = analysis.get("keywords", {})
+        missing = keywords.get("missing", [])
         if missing:
             focus_areas.append(f"validate skills: {', '.join(missing[:3])}")
 

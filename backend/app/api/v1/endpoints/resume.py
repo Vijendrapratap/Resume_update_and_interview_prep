@@ -10,7 +10,7 @@ from pathlib import Path
 import logging
 
 from app.core.config import settings
-from app.services.resume.parser import ResumeParser
+from app.services.resume.parser import ResumeParser, ResumeChunker
 from app.schemas.resume import ResumeUploadResponse, ResumeDetails
 
 router = APIRouter()
@@ -59,7 +59,11 @@ async def upload_resume(
         parser = ResumeParser()
         parsed_content = await parser.parse(file_path)
 
-        # Store resume data
+        # Create semantic chunks for RAG
+        chunker = ResumeChunker(max_chunk_size=500, overlap=50)
+        chunks = chunker.chunk_resume(parsed_content)
+
+        # Store resume data with chunks
         resume_storage[resume_id] = {
             "id": resume_id,
             "filename": file.filename,
@@ -67,6 +71,8 @@ async def upload_resume(
             "file_type": file_ext,
             "text_content": parsed_content.get("text", ""),
             "sections": parsed_content.get("sections", {}),
+            "contact_info": parsed_content.get("contact_info", {}),
+            "chunks": chunks,  # RAG-ready semantic chunks
             "status": "uploaded"
         }
 
@@ -132,4 +138,82 @@ async def list_resumes():
             }
             for r in resume_storage.values()
         ]
+    }
+
+
+@router.get("/{resume_id}/chunks")
+async def get_resume_chunks(
+    resume_id: str,
+    chunk_type: Optional[str] = None
+):
+    """
+    Get semantic chunks from a resume for RAG retrieval.
+
+    Query params:
+    - chunk_type: Filter by type (experience, project, skill, education, etc.)
+    """
+    if resume_id not in resume_storage:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    resume_data = resume_storage[resume_id]
+    chunks = resume_data.get("chunks", [])
+
+    # Filter by type if specified
+    if chunk_type:
+        chunks = [c for c in chunks if c["type"] == chunk_type]
+
+    return {
+        "resume_id": resume_id,
+        "total_chunks": len(resume_data.get("chunks", [])),
+        "filtered_chunks": len(chunks),
+        "chunks": chunks
+    }
+
+
+@router.get("/{resume_id}/context/{topic}")
+async def get_context_for_topic(
+    resume_id: str,
+    topic: str
+):
+    """
+    Get relevant resume context for a specific topic/question.
+
+    This is used during interviews to retrieve relevant resume sections
+    when verifying claims or generating follow-up questions.
+    """
+    if resume_id not in resume_storage:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    resume_data = resume_storage[resume_id]
+    chunks = resume_data.get("chunks", [])
+
+    if not chunks:
+        # Fallback to full text search
+        return {
+            "resume_id": resume_id,
+            "topic": topic,
+            "context": resume_data.get("text_content", "")[:1000],
+            "source": "full_text"
+        }
+
+    # Find relevant chunks
+    chunker = ResumeChunker()
+    relevant_chunk = chunker.get_chunk_for_topic(chunks, topic)
+
+    if relevant_chunk:
+        return {
+            "resume_id": resume_id,
+            "topic": topic,
+            "context": relevant_chunk["content"],
+            "chunk_type": relevant_chunk["type"],
+            "metadata": relevant_chunk.get("metadata", {}),
+            "source": "chunk"
+        }
+
+    # No relevant chunk found
+    return {
+        "resume_id": resume_id,
+        "topic": topic,
+        "context": None,
+        "source": "not_found"
     }

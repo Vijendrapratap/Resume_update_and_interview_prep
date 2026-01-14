@@ -16,7 +16,10 @@ import {
   Bot,
   PlayCircle,
   StopCircle,
-  Settings
+  Settings,
+  Maximize,
+  Minimize,
+  AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -48,7 +51,10 @@ export default function InterviewPage() {
   // Proctoring State
   const [cameraActive, setCameraActive] = useState(false)
   const [warnings, setWarnings] = useState([])
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fullscreenDismissed, setFullscreenDismissed] = useState(false)
   const videoRef = useRef(null)
+  const containerRef = useRef(null)
 
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
@@ -141,6 +147,63 @@ export default function InterviewPage() {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop())
     }
   }
+
+  // Proctoring: Fullscreen Mode
+  const enterFullscreen = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen()
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        await document.documentElement.webkitRequestFullscreen()
+      } else if (document.documentElement.msRequestFullscreen) {
+        await document.documentElement.msRequestFullscreen()
+      }
+      setIsFullscreen(true)
+    } catch (err) {
+      console.error("Fullscreen error:", err)
+      toast.error("Could not enter fullscreen mode")
+    }
+  }
+
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen()
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen()
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen()
+    }
+    setIsFullscreen(false)
+  }
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+
+      // Log warning if user exits fullscreen during interview
+      if (!isCurrentlyFullscreen && session && session.status === 'in_progress' && !isComplete) {
+        const warning = `Exited fullscreen at ${new Date().toLocaleTimeString()}`
+        setWarnings(prev => [...prev, warning])
+        toast.error("Warning: Fullscreen mode exited!", { icon: '⚠️' })
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+    }
+  }, [session, isComplete])
 
   // Proctoring: Tab Switching Detection
   useEffect(() => {
@@ -398,6 +461,42 @@ export default function InterviewPage() {
     )
   }
 
+  // Fullscreen prompt before interview starts
+  if (!isFullscreen && !fullscreenDismissed && session) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-xl shadow-lg border border-gray-200">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Settings className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Enter Fullscreen Mode</h2>
+          <p className="text-gray-600 mb-6">
+            For the best interview experience and to enable proctoring, please enter fullscreen mode.
+            This helps minimize distractions and ensures accurate monitoring.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={enterFullscreen}
+              className="w-full px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center"
+            >
+              <PlayCircle className="w-5 h-5 mr-2" />
+              Enter Fullscreen & Start
+            </button>
+            <button
+              onClick={() => setFullscreenDismissed(true)}
+              className="w-full px-6 py-2 text-gray-600 hover:text-gray-900 text-sm"
+            >
+              Continue without fullscreen
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-4">
+            Note: Exiting fullscreen during the interview will be logged.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -454,6 +553,28 @@ export default function InterviewPage() {
               Voice
             </button>
           </div>
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+            className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+              isFullscreen
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-4 h-4 mr-1.5" />
+                Exit FS
+              </>
+            ) : (
+              <>
+                <Maximize className="w-4 h-4 mr-1.5" />
+                Fullscreen
+              </>
+            )}
+          </button>
           {!isComplete && (
             <button
               onClick={handleEndInterview}
@@ -637,7 +758,8 @@ export default function InterviewPage() {
       </div>
 
       {/* Proctoring HUD */}
-      <div className="fixed bottom-4 right-4 w-48 bg-black rounded-lg overflow-hidden shadow-lg border border-gray-700 z-50">
+      <div className="fixed bottom-4 right-4 w-52 bg-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 z-50">
+        {/* Camera Feed */}
         <div className="relative aspect-video bg-gray-900">
           <video
             ref={videoRef}
@@ -652,10 +774,39 @@ export default function InterviewPage() {
             </div>
           )}
           <div className="absolute top-1 left-1 bg-red-600 rounded-full w-2 h-2 animate-pulse" title="Recording"></div>
+          {/* Proctoring Status Badge */}
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-black/70 rounded text-[9px] text-white">
+            PROCTORED
+          </div>
         </div>
+
+        {/* Status Bar */}
+        <div className="px-2 py-1.5 bg-gray-800 text-[10px] space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Camera</span>
+            <span className={cameraActive ? 'text-green-400' : 'text-red-400'}>
+              {cameraActive ? '● Active' : '○ Inactive'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Fullscreen</span>
+            <span className={isFullscreen ? 'text-green-400' : 'text-yellow-400'}>
+              {isFullscreen ? '● Active' : '○ Off'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Tab Focus</span>
+            <span className="text-green-400">● Focused</span>
+          </div>
+        </div>
+
+        {/* Warnings */}
         {warnings.length > 0 && (
-          <div className="px-2 py-1 bg-red-900/90 text-white text-[10px] truncate">
-            {warnings.length} Warnings
+          <div className="px-2 py-1.5 bg-red-900/90 border-t border-red-800">
+            <div className="flex items-center text-white text-[10px]">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {warnings.length} Warning{warnings.length > 1 ? 's' : ''} Recorded
+            </div>
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.services.llm import LLMService
 from app.core.config import model_config
+from app.services.analytics.behavioral import BehavioralAnalytics
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class ReportGenerator:
     def __init__(self):
         self.llm = LLMService(task="report_generation")
         self.prompts = model_config.get_prompt("report_generation")
+        self.behavioral_analyzer = BehavioralAnalytics()
 
     async def generate_interview_report(
         self,
@@ -68,6 +70,12 @@ class ReportGenerator:
             evaluations = session_data.get("evaluations", [])
             aggregate_scores = self._calculate_aggregates(evaluations)
 
+            # Generate behavioral analytics from responses
+            responses = session_data.get("responses", [])
+            behavioral_summary = {}
+            if responses:
+                behavioral_summary = self.behavioral_analyzer.analyze_interview_session(responses)
+
             return {
                 "overall_score": result.get("overall_score", aggregate_scores.get("overall", 0)),
                 "recommendation": result.get("recommendation", self._get_recommendation(aggregate_scores.get("overall", 0))),
@@ -77,7 +85,7 @@ class ReportGenerator:
                 "areas_for_improvement": result.get("areas_for_improvement", []),
                 "skill_assessment": result.get("skill_assessment", {}),
                 "behavioral_competencies": result.get("behavioral_competencies", {}),
-                "communication_analysis": result.get("communication_analysis", {}),
+                "communication_analysis": result.get("communication_analysis", behavioral_summary.get("summary", {})),
                 "question_feedback": self._format_question_feedback(
                     session_data.get("questions", []),
                     session_data.get("responses", []),
@@ -88,9 +96,10 @@ class ReportGenerator:
                     "short_term": [],
                     "medium_term": []
                 }),
-                "interview_tips": result.get("interview_tips", []),
+                "interview_tips": result.get("interview_tips", []) + behavioral_summary.get("recommendations", []),
                 "verification_status": session_data.get("verification_status", {}),
-                "gap_analysis": session_data.get("gap_analysis", {})
+                "gap_analysis": session_data.get("gap_analysis", {}),
+                "behavioral_analytics": behavioral_summary
             }
 
         except Exception as e:

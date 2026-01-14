@@ -364,3 +364,355 @@ class ResumeSectionExtractor:
         skills = [s.strip() for s in skills if s.strip() and len(s.strip()) > 1]
 
         return skills
+
+
+class ResumeChunker:
+    """
+    Semantic chunking for RAG (Retrieval-Augmented Generation).
+
+    Creates meaningful chunks from resumes that can be:
+    1. Stored in a vector database
+    2. Retrieved during interviews for fact-checking
+    3. Used for targeted question generation
+    """
+
+    # Chunk types for classification
+    CHUNK_TYPES = [
+        "contact_info",
+        "summary",
+        "experience",
+        "project",
+        "education",
+        "skill",
+        "certification",
+        "achievement"
+    ]
+
+    def __init__(self, max_chunk_size: int = 500, overlap: int = 50):
+        """
+        Args:
+            max_chunk_size: Maximum characters per chunk
+            overlap: Character overlap between chunks for context
+        """
+        self.max_chunk_size = max_chunk_size
+        self.overlap = overlap
+
+    def chunk_resume(self, parsed_resume: Dict) -> List[Dict]:
+        """
+        Create semantic chunks from a parsed resume.
+
+        Args:
+            parsed_resume: Output from ResumeParser.parse()
+
+        Returns:
+            List of chunks, each with:
+            - id: Unique chunk identifier
+            - type: Chunk type (experience, project, skill, etc.)
+            - content: Chunk text content
+            - metadata: Additional context
+        """
+        chunks = []
+        chunk_id = 0
+
+        sections = parsed_resume.get("sections", {})
+        contact_info = parsed_resume.get("contact_info", {})
+
+        # 1. Contact info chunk
+        if contact_info:
+            contact_text = self._format_contact(contact_info)
+            if contact_text:
+                chunks.append({
+                    "id": f"chunk_{chunk_id}",
+                    "type": "contact_info",
+                    "content": contact_text,
+                    "metadata": {"section": "contact"}
+                })
+                chunk_id += 1
+
+        # 2. Summary chunk
+        summary = sections.get("summary", "")
+        if summary:
+            chunks.append({
+                "id": f"chunk_{chunk_id}",
+                "type": "summary",
+                "content": summary[:self.max_chunk_size],
+                "metadata": {"section": "summary"}
+            })
+            chunk_id += 1
+
+        # 3. Experience chunks (one per job)
+        experience = sections.get("experience", "")
+        if experience:
+            exp_chunks = self._chunk_experience(experience, chunk_id)
+            chunks.extend(exp_chunks)
+            chunk_id += len(exp_chunks)
+
+        # 4. Project chunks
+        projects = sections.get("projects", "")
+        if projects:
+            proj_chunks = self._chunk_projects(projects, chunk_id)
+            chunks.extend(proj_chunks)
+            chunk_id += len(proj_chunks)
+
+        # 5. Education chunks
+        education = sections.get("education", "")
+        if education:
+            chunks.append({
+                "id": f"chunk_{chunk_id}",
+                "type": "education",
+                "content": education[:self.max_chunk_size],
+                "metadata": {"section": "education"}
+            })
+            chunk_id += 1
+
+        # 6. Skills chunk (keep together for context)
+        skills = sections.get("skills", "")
+        if skills:
+            chunks.append({
+                "id": f"chunk_{chunk_id}",
+                "type": "skill",
+                "content": skills[:self.max_chunk_size],
+                "metadata": {
+                    "section": "skills",
+                    "skills_list": ResumeSectionExtractor.extract_skills_list(skills)
+                }
+            })
+            chunk_id += 1
+
+        # 7. Certifications chunk
+        certs = sections.get("certifications", "")
+        if certs:
+            chunks.append({
+                "id": f"chunk_{chunk_id}",
+                "type": "certification",
+                "content": certs[:self.max_chunk_size],
+                "metadata": {"section": "certifications"}
+            })
+            chunk_id += 1
+
+        # 8. Awards/achievements chunk
+        awards = sections.get("awards", "")
+        if awards:
+            chunks.append({
+                "id": f"chunk_{chunk_id}",
+                "type": "achievement",
+                "content": awards[:self.max_chunk_size],
+                "metadata": {"section": "awards"}
+            })
+            chunk_id += 1
+
+        return chunks
+
+    def _chunk_experience(self, experience_text: str, start_id: int) -> List[Dict]:
+        """Split experience section into individual job chunks."""
+        chunks = []
+
+        # Try to detect job entries by common patterns
+        # Pattern: Company name followed by date range
+        job_patterns = [
+            # Company | Role | Date
+            r'\n(?=[A-Z][A-Za-z\s&,\.]+(?:\||–|-)\s*[A-Z][a-z]+)',
+            # Bullet points or new paragraphs
+            r'\n\n(?=[A-Z])',
+            # Date patterns as separators
+            r'(?=\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*[-–])'
+        ]
+
+        # Try each pattern
+        entries = [experience_text]
+        for pattern in job_patterns:
+            if len(entries) == 1:
+                entries = re.split(pattern, experience_text)
+                entries = [e.strip() for e in entries if e.strip()]
+
+        # If we found distinct entries, create chunks
+        if len(entries) > 1:
+            for i, entry in enumerate(entries):
+                if len(entry) > 50:  # Skip very short fragments
+                    # Extract company/role if possible
+                    first_line = entry.split('\n')[0]
+                    chunks.append({
+                        "id": f"chunk_{start_id + i}",
+                        "type": "experience",
+                        "content": entry[:self.max_chunk_size],
+                        "metadata": {
+                            "section": "experience",
+                            "entry_index": i,
+                            "title": first_line[:100]
+                        }
+                    })
+        else:
+            # Fallback: chunk by size with overlap
+            chunks.extend(self._chunk_by_size(
+                experience_text, "experience", start_id
+            ))
+
+        return chunks
+
+    def _chunk_projects(self, projects_text: str, start_id: int) -> List[Dict]:
+        """Split projects section into individual project chunks."""
+        chunks = []
+
+        # Try to detect project entries
+        # Common patterns: numbered lists, bullet points, or headers
+        project_patterns = [
+            r'\n(?=\d+[\.\)]\s+)',  # Numbered list
+            r'\n(?=•\s+[A-Z])',  # Bullet points
+            r'\n(?=Project\s*:)',  # "Project:" prefix
+            r'\n\n(?=[A-Z])',  # Double newline + capital letter
+        ]
+
+        entries = [projects_text]
+        for pattern in project_patterns:
+            if len(entries) == 1:
+                entries = re.split(pattern, projects_text)
+                entries = [e.strip() for e in entries if e.strip()]
+
+        if len(entries) > 1:
+            for i, entry in enumerate(entries):
+                if len(entry) > 30:
+                    # Try to extract project name
+                    first_line = entry.split('\n')[0]
+                    # Remove common prefixes
+                    project_name = re.sub(r'^[\d\.\)\•\-\s]+', '', first_line)
+
+                    chunks.append({
+                        "id": f"chunk_{start_id + i}",
+                        "type": "project",
+                        "content": entry[:self.max_chunk_size],
+                        "metadata": {
+                            "section": "projects",
+                            "project_index": i,
+                            "project_name": project_name[:100],
+                            "technologies": self._extract_technologies(entry)
+                        }
+                    })
+        else:
+            chunks.extend(self._chunk_by_size(
+                projects_text, "project", start_id
+            ))
+
+        return chunks
+
+    def _chunk_by_size(
+        self,
+        text: str,
+        chunk_type: str,
+        start_id: int
+    ) -> List[Dict]:
+        """Fallback: chunk by size with overlap."""
+        chunks = []
+        start = 0
+        chunk_num = 0
+
+        while start < len(text):
+            end = start + self.max_chunk_size
+
+            # Try to break at sentence boundary
+            if end < len(text):
+                # Look for sentence end within last 100 chars
+                last_period = text.rfind('.', end - 100, end)
+                if last_period > start:
+                    end = last_period + 1
+
+            chunk_content = text[start:end].strip()
+
+            if chunk_content:
+                chunks.append({
+                    "id": f"chunk_{start_id + chunk_num}",
+                    "type": chunk_type,
+                    "content": chunk_content,
+                    "metadata": {
+                        "section": chunk_type,
+                        "chunk_index": chunk_num
+                    }
+                })
+                chunk_num += 1
+
+            start = end - self.overlap
+
+        return chunks
+
+    def _format_contact(self, contact_info: Dict) -> str:
+        """Format contact info as text."""
+        parts = []
+        if contact_info.get("email"):
+            parts.append(f"Email: {contact_info['email']}")
+        if contact_info.get("phone"):
+            parts.append(f"Phone: {contact_info['phone']}")
+        if contact_info.get("linkedin"):
+            parts.append(f"LinkedIn: {contact_info['linkedin']}")
+        if contact_info.get("github"):
+            parts.append(f"GitHub: {contact_info['github']}")
+        return " | ".join(parts)
+
+    def _extract_technologies(self, text: str) -> List[str]:
+        """Extract technology mentions from project text."""
+        # Common technologies to look for
+        tech_patterns = [
+            r'\b(Python|Java|JavaScript|TypeScript|C\+\+|C#|Go|Rust|Ruby|PHP|Swift|Kotlin)\b',
+            r'\b(React|Angular|Vue|Node\.js|Django|Flask|FastAPI|Spring|Rails|Express)\b',
+            r'\b(AWS|Azure|GCP|Docker|Kubernetes|Terraform|Jenkins|CI/CD)\b',
+            r'\b(PostgreSQL|MySQL|MongoDB|Redis|Elasticsearch|DynamoDB|Firebase)\b',
+            r'\b(TensorFlow|PyTorch|Scikit-learn|Pandas|NumPy|Keras)\b',
+            r'\b(REST|GraphQL|gRPC|WebSocket|API)\b',
+        ]
+
+        technologies = set()
+        for pattern in tech_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            technologies.update([m.strip() for m in matches])
+
+        return list(technologies)
+
+    def get_chunk_for_topic(
+        self,
+        chunks: List[Dict],
+        topic: str,
+        chunk_type: Optional[str] = None
+    ) -> Optional[Dict]:
+        """
+        Find the most relevant chunk for a given topic/question.
+
+        Args:
+            chunks: List of resume chunks
+            topic: Topic or keyword to search for
+            chunk_type: Optional filter by chunk type
+
+        Returns:
+            Most relevant chunk or None
+        """
+        topic_lower = topic.lower()
+        best_match = None
+        best_score = 0
+
+        for chunk in chunks:
+            # Filter by type if specified
+            if chunk_type and chunk["type"] != chunk_type:
+                continue
+
+            content_lower = chunk["content"].lower()
+
+            # Simple relevance scoring
+            score = 0
+
+            # Exact match bonus
+            if topic_lower in content_lower:
+                score += 10
+
+            # Word overlap
+            topic_words = set(topic_lower.split())
+            content_words = set(content_lower.split())
+            overlap = len(topic_words.intersection(content_words))
+            score += overlap * 2
+
+            # Check metadata
+            metadata = chunk.get("metadata", {})
+            if topic_lower in str(metadata).lower():
+                score += 5
+
+            if score > best_score:
+                best_score = score
+                best_match = chunk
+
+        return best_match if best_score > 0 else None
