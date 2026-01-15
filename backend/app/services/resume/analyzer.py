@@ -246,7 +246,7 @@ class ResumeAnalyzer:
             return {"error": str(e), "career_gaps": [], "timeline_issues": []}
 
     def _validate_result(self, result: Dict, has_jd: bool = False) -> Dict:
-        """Ensure result has all required fields with defaults"""
+        """Ensure result has all required fields with defaults and calculate missing scores"""
         # Common defaults for all analyses - using weighted scoring
         # Skills: 40%, Experience: 30%, Education: 20%, Quality: 10%
         defaults = {
@@ -307,6 +307,93 @@ class ResumeAnalyzer:
         for key, default in defaults.items():
             if key not in result:
                 result[key] = default
+
+        # Ensure scores are integers and not None
+        score_fields = ["skills_score", "experience_score", "education_score", "quality_score", "overall_score", "technical_score"]
+        for field in score_fields:
+            if result.get(field) is None or result.get(field) == "":
+                result[field] = 0
+            else:
+                try:
+                    result[field] = int(float(result[field]))
+                except (ValueError, TypeError):
+                    result[field] = 0
+
+        # If we have overall_score but missing component scores, estimate them
+        # This handles cases where LLM returns overall but not components
+        if result.get("overall_score", 0) > 0:
+            overall = result["overall_score"]
+
+            # If all component scores are 0 but overall is not, estimate components
+            if (result.get("skills_score", 0) == 0 and
+                result.get("experience_score", 0) == 0 and
+                result.get("education_score", 0) == 0 and
+                result.get("quality_score", 0) == 0):
+
+                # Estimate component scores based on available data
+                # Use overall as baseline and adjust based on resume content
+                tech_skills = result.get("technical_skills", {})
+                experience = result.get("experience_summary", [])
+                education = result.get("education", [])
+                highlights = result.get("career_highlights", [])
+
+                # Skills score: Based on technical skills depth
+                skills_count = sum(len(v) if isinstance(v, list) else 0 for v in tech_skills.values())
+                if skills_count >= 15:
+                    result["skills_score"] = min(95, overall + 10)
+                elif skills_count >= 10:
+                    result["skills_score"] = overall
+                elif skills_count >= 5:
+                    result["skills_score"] = max(50, overall - 10)
+                else:
+                    result["skills_score"] = max(40, overall - 20)
+
+                # Experience score: Based on experience entries and highlights
+                exp_count = len(experience)
+                highlight_count = len(highlights)
+                if exp_count >= 4 and highlight_count >= 3:
+                    result["experience_score"] = min(95, overall + 5)
+                elif exp_count >= 2:
+                    result["experience_score"] = overall
+                else:
+                    result["experience_score"] = max(50, overall - 15)
+
+                # Education score: Based on education entries
+                edu_count = len(education)
+                certs = result.get("certifications", [])
+                if edu_count >= 2 or len(certs) >= 2:
+                    result["education_score"] = min(90, overall + 5)
+                elif edu_count >= 1:
+                    result["education_score"] = overall - 5
+                else:
+                    result["education_score"] = max(50, overall - 20)
+
+                # Quality score: Based on highlights with quantified results
+                if highlight_count >= 4:
+                    result["quality_score"] = min(90, overall + 5)
+                elif highlight_count >= 2:
+                    result["quality_score"] = overall
+                else:
+                    result["quality_score"] = max(55, overall - 10)
+
+                # Ensure technical_score matches skills_score
+                result["technical_score"] = result["skills_score"]
+
+                logger.info(f"Estimated component scores from overall={overall}: skills={result['skills_score']}, exp={result['experience_score']}, edu={result['education_score']}, quality={result['quality_score']}")
+
+        # If component scores exist but overall is 0, calculate overall
+        elif (result.get("skills_score", 0) > 0 or result.get("experience_score", 0) > 0):
+            result["overall_score"] = round(
+                result.get("skills_score", 0) * 0.4 +
+                result.get("experience_score", 0) * 0.3 +
+                result.get("education_score", 0) * 0.2 +
+                result.get("quality_score", 0) * 0.1
+            )
+            logger.info(f"Calculated overall_score={result['overall_score']} from components")
+
+        # Ensure technical_score is set
+        if result.get("technical_score", 0) == 0 and result.get("skills_score", 0) > 0:
+            result["technical_score"] = result["skills_score"]
 
         return result
 
