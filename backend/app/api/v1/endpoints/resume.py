@@ -11,6 +11,7 @@ import logging
 
 from app.core.config import settings
 from app.services.resume.parser import ResumeParser, ResumeChunker
+from app.services.analytics.resume import ResumeAnalytics
 from app.schemas.resume import ResumeUploadResponse, ResumeDetails
 
 router = APIRouter()
@@ -63,6 +64,10 @@ async def upload_resume(
         chunker = ResumeChunker(max_chunk_size=500, overlap=50)
         chunks = chunker.chunk_resume(parsed_content)
 
+        # Run Advanced Analytics
+        analytics_engine = ResumeAnalytics()
+        analytics_result = analytics_engine.analyze(parsed_content)
+
         # Store resume data with chunks
         resume_storage[resume_id] = {
             "id": resume_id,
@@ -73,6 +78,7 @@ async def upload_resume(
             "sections": parsed_content.get("sections", {}),
             "contact_info": parsed_content.get("contact_info", {}),
             "chunks": chunks,  # RAG-ready semantic chunks
+            "analytics": analytics_result, # New structured analysis
             "status": "uploaded"
         }
 

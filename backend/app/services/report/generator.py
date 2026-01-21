@@ -121,9 +121,12 @@ class ReportGenerator:
         Returns:
             Comprehensive report dict
         """
+        analytics = analysis_result.get("analytics", {})
+        
         prompt = self.prompts.get("resume_report_prompt", "").format(
             resume_text=resume_text,
-            analysis_results=str(analysis_result),
+            analysis_results=str(analysis_result), 
+            analytics_deep_dive=str(analytics), # Pass detailed analytics
             job_description=""
         )
 
@@ -144,7 +147,8 @@ class ReportGenerator:
                 "keyword_analysis": result.get("keyword_analysis", analysis_result.get("keywords", {})),
                 "ats_optimization": result.get("ats_optimization", {}),
                 "priority_actions": result.get("priority_actions", []),
-                "rewrite_examples": result.get("rewrite_examples", analysis_result.get("rewrite_examples", []))
+                "rewrite_examples": result.get("rewrite_examples", analysis_result.get("rewrite_examples", [])),
+                "deep_analysis": analytics # Passthrough raw analytics for frontend
             }
 
         except Exception as e:

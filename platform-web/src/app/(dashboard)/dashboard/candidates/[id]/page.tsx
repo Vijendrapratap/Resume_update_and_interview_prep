@@ -58,6 +58,34 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
                 </div>
             </div>
 
+            {/* Red Flags Alert - NEW */}
+            {
+                candidate.analytics && (candidate.analytics.job_stability?.job_hopping_risk || candidate.analytics.gap_analysis?.has_gaps) && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8 flex items-start gap-4">
+                        <div className="bg-red-100 p-2 rounded-lg text-red-600">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 mb-2">Attention Required</h3>
+                            <div className="space-y-1">
+                                {candidate.analytics.job_stability?.job_hopping_risk && (
+                                    <div className="text-red-700 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+                                        Job Hopping Detected: {candidate.analytics.job_stability.flags[0]}
+                                    </div>
+                                )}
+                                {candidate.analytics.gap_analysis?.has_gaps && candidate.analytics.gap_analysis.gaps.map((gap: { duration_months: number; between: string }, i: number) => (
+                                    <div key={i} className="text-red-700 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+                                        Employment Gap: {gap.duration_months} months between {gap.between}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -179,6 +207,49 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
                                     {candidate.resume_analysis.skills_found.map(skill => (
                                         <span key={skill} className="text-gray-600 bg-gray-100 px-2 py-1 rounded text-sm">{skill}</span>
                                     ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Detailed Career Analytics - NEW */}
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <FileText className="text-purple-600" /> Career Analytics
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            {/* Tenure & Stability */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">Job Stability</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 font-medium mb-1">Avg Tenure</div>
+                                        <div className="text-2xl font-bold text-gray-900">
+                                            {candidate.analytics?.job_stability?.average_tenure_years || "N/A"} <span className="text-sm font-normal text-gray-500">years</span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 font-medium mb-1">Risk Level</div>
+                                        <div className={`text-lg font-bold ${candidate.analytics?.job_stability?.job_hopping_risk ? "text-red-600" : "text-green-600"}`}>
+                                            {candidate.analytics?.job_stability?.job_hopping_risk ? "High Risk" : "Low Risk"}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Leadership */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">Leadership Signals</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {(candidate.analytics?.leadership_signals?.length || 0) > 0 ? candidate.analytics?.leadership_signals.map((signal: string) => (
+                                        <span key={signal} className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm font-medium border border-purple-100">
+                                            {signal}
+                                        </span>
+                                    )) : (
+                                        <span className="text-gray-500 text-sm italic">No strong leadership signals detected in resume text.</span>
+                                    )}
                                 </div>
                             </div>
                         </div>

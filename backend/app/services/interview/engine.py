@@ -417,15 +417,24 @@ class InterviewEngine:
         if missing:
             focus_areas.append(f"validate skills: {', '.join(missing[:3])}")
 
-        # Check for Gap Analysis / Fraud flags
-        gap_analysis = analysis.get("gap_analysis", {})
-        if gap_analysis.get("discrepancy_flag"):
-             focus_areas.append(f"INVESTIGATE DISCREPANCY: {gap_analysis.get('discrepancy_details')}")
+        # Check for Gap Analysis / Job Hopping
+        analytics = analysis.get("analytics", {})
         
-        career_gaps = gap_analysis.get("career_gaps", [])
-        if career_gaps:
-             for gap in career_gaps:
-                 focus_areas.append(f"Explain gap: {gap.get('start')} to {gap.get('end')}")
+        # Gap Analysis
+        gap_analysis = analytics.get("gap_analysis", {})
+        if gap_analysis.get("has_gaps"):
+             for gap in gap_analysis.get("gaps", []):
+                 focus_areas.append(f"Explain resume gap: {gap.get('between', 'between jobs')}")
+
+        # Job Stability
+        job_stability = analytics.get("job_stability", {})
+        if job_stability.get("job_hopping_risk"):
+            focus_areas.append("Discuss frequent job changes/short tenure")
+            
+        # Leadership Verification
+        leadership = analytics.get("leadership_signals", [])
+        if leadership:
+            focus_areas.append(f"Verify leadership experience: {', '.join(leadership[:2])}")
 
         return ", ".join(focus_areas) if focus_areas else "comprehensive assessment"
 

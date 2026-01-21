@@ -371,6 +371,14 @@ class TTSService:
             data = response.json()
             return data.get("text", "")
             
+# Global cache for Kokoro pipeline to avoid reloading (High Latency Fix)
+_KOKORO_PIPELINE = None
+
+class TTSService:
+    # ... (existing init methods) ...
+
+    # ... (rest of the file until _synthesize_kokoro) ... 
+
     async def _synthesize_kokoro(
         self,
         text: str,
@@ -378,15 +386,21 @@ class TTSService:
         config: Dict,
         speed: float = 1.0
     ) -> bytes:
-        """Synthesize using Kokoro (Local)"""
+        """Synthesize using Kokoro (Local) with Caching"""
+        global _KOKORO_PIPELINE
         try:
             from kokoro import KPipeline
             import soundfile as sf
             import numpy as np
             
-            # Initialize pipeline (singleton-ish or cached ideally, but for now just init)
-            # 'a' is for American English
-            pipeline = KPipeline(lang_code='a') 
+            # Initialize pipeline only once (Singleton Pattern)
+            if _KOKORO_PIPELINE is None:
+                logger.info("Loading Kokoro Pipeline (First Run)...")
+                # 'a' is for American English
+                _KOKORO_PIPELINE = KPipeline(lang_code='a')
+                logger.info("Kokoro Pipeline Loaded.")
+            
+            pipeline = _KOKORO_PIPELINE
             
             # Default voice
             voice = voice or config.get("voice", "af_heart")
